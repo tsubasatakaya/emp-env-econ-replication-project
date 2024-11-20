@@ -133,7 +133,7 @@ class DataPreprocessor:
         )
                                  )
 
-
+        crime_interstate_wide.write_csv(self.output_data_path / "crime_road_distances.csv")
 
 
 
@@ -145,7 +145,6 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor._extract_crime_interstate_distance()
 
 
 
