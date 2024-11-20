@@ -48,12 +48,45 @@ def extract_crime_data(input_data_path: Path,
     # Save part1 crime data
     crime_data.filter(
         pl.col("part1") == 1
-    ).write_csv(data_path / "chicago_part1_crimes.csv")
+    ).write_csv(output_data_path / "chicago_part1_crimes.csv")
 
     # Save all crimes
     crime_data.drop(
         ["block", "description", "location_description", "beat", "district",
          "ward", "community_area", "x_coordinate", "y_coordinate", "location"]
-    ).write_csv(data_path / "chicago_all_crimes.csv")
+    ).write_csv(output_data_path / "chicago_all_crimes.csv")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
