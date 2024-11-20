@@ -7,10 +7,6 @@ import polars as pl
 import polars.selectors as cs
 
 
-data_path = Path("data")
-source_path = Path("replication_package")
-input_data_path = source_path/"Raw-Data"
-
 class DataPreprocessor:
     def __init__(self,
                  input_data_path: Path,
@@ -64,14 +60,92 @@ class DataPreprocessor:
         ).write_csv(self.output_data_path / "chicago_all_crimes.csv")
 
 
-    def extract_crime_interstate_distance(self):
-        pass
+    def _extract_crime_interstate_distance(self):
+        crime_interstate_data = (pl.read_csv(self.input_data_path/"Chicago_Crime_Interstate_Distance_0606.csv")
+                                 .rename(lambda col: col.lower().replace(" ", "_")))
+
+        crime_interstate_data = (crime_interstate_data
+                                 .drop(
+            ["objectid", "feat_seq", "frequency", "shape_length"])
+                                 .sort("id", "near_dist")
+                                 .with_columns(
+            pl.when(pl.col("id") == pl.col("id").shift(1))
+            .then(pl.lit(2))
+            .otherwise(pl.lit(1))
+            .alias("rank"))
+                                 .drop("near_rank")
+        )
+
+        crime_interstate_wide = crime_interstate_data.pivot(
+            on="rank",
+            index=["id", "latitude", "longitude",],
+        )
+
+        crime_interstate_wide = (crime_interstate_wide
+                                 .with_columns(
+            [(pl.col(f"near_angle_{i}") % 360)for i in [1, 2]])
+                                 )
+
+        crime_interstate_wide = (crime_interstate_wide
+                                 .with_columns(
+            pl.when(
+                (pl.col("route_num_1") == "I90") & (pl.col("latitude") > 41.84) & (pl.col("longitude") > -87.75))
+            .then(pl.lit("I90_A"))
+            .when(
+                (pl.col("route_num_1") == "I90") & (pl.col("latitude") < 41.84) & (pl.col("latitude") > 41.775))
+            .then(pl.lit("I90_B"))
+            .when(
+                (pl.col("route_num_1") == "I90") & (pl.col("latitude") < 41.775))
+            .then(pl.lit("I90_C"))
+            .otherwise(pl.col("route_num_1"))
+            .alias("route_num_1_mod"))
+                                 )
+
+        crime_interstate_wide = (crime_interstate_wide
+                                 .with_columns(
+            pl.when(
+                # Drop observations on fringe of city limits
+                (pl.col("longitude") < -87.8) |
+                # Drop observations far out I-290 or I-55
+                ((pl.col("route_num_1").is_in(["I290", "I55"])) & (pl.col("longitude") < -87.74)) |
+                # Drop observations more than one mile from the closest interstate
+                (pl.col("near_dist_1") > 5280) |
+                # Drop observations closer than one mile to two interstates
+                (pl.col("near_dist_2") < 5280) |
+                # Trim observations to clean treatment/control groups
+                # I-90A
+                ((pl.col("latitude") - pl.col("longitude")) > 129.69) |
+                (((pl.col("latitude") - pl.col("longitude")) < 129.575) & (pl.col("route_num_1_mod") == "I90_A")) |
+                # I-90B
+                ((pl.col("latitude") < 41.79) & (pl.col("route_num_1_mod") == "I90_B")) |
+                # I-90C
+                (((pl.col("latitude") - pl.col("longitude")) > 129.36) & (pl.col("route_num_1_mod") == "I90_C")) |
+                (((pl.col("latitude") - pl.col("longitude")) < 129.26) & (pl.col("route_num_1_mod") == "I90_C")) |
+                # I-55
+                ((pl.col("longitude") > -87.65) & (pl.col("route_num_1") == "I55")) |
+                # I-94
+                (((pl.col("latitude") - pl.col("longitude")) < 129.34) & (pl.col("route_num_1_mod") == "I94")) |
+                ((pl.col("latitude") > 41.75) & (pl.col("route_num_1_mod") == "I94"))
+            )
+            .then(pl.lit(0))
+            .otherwise(pl.lit(1))
+            .alias("sample_set")
+        )
+                                 )
 
 
 
 
 
 
+
+
+if __name__ == '__main__':
+    source_path = Path("replication_package")
+    input_data_path = source_path / "Raw-Data"
+    output_data_path = Path("data")
+    preprocessor = DataPreprocessor(input_data_path, output_data_path)
+    preprocessor._extract_crime_interstate_distance()
 
 
 
