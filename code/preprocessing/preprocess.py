@@ -190,7 +190,7 @@ class DataPreprocessor:
             .cast(pl.Int64)
             .sum()
             .over(["monitor_id", "date_local"])
-            .alias("num_hrly_obs"),
+            .alias("num_hrly_obs_co"),
             pl.col("sample_measurement")
             .max()
             .over(["monitor_id", "date_local"])
@@ -326,6 +326,83 @@ class DataPreprocessor:
         )
 
         daily_pm_data.write_csv(self.output_data_path/"chicago_pm10_2000_2012_daily.csv")
+
+    def _extract_chicago_no2(self):
+        temp_1 = pl.read_csv(self.input_data_path/"no2_chicago_20000101_20041231.txt",
+                             separator=",", null_values=["END OF FILE"], infer_schema_length=10000)
+        temp_2 = pl.read_csv(self.input_data_path/"no2_chicago_20050101_20091231.txt",
+                             separator=",", null_values=["END OF FILE"], infer_schema_length=10000)
+        temp_3 = pl.read_csv(self.input_data_path/"no2_chicago_20100101_20121231.txt",
+                             separator=",", null_values=["END OF FILE"], infer_schema_length=10000)
+
+        no_data = (pl.concat([temp_1, temp_2, temp_3])
+        .rename(lambda col: col.lower().replace(" ", "_"))
+        .with_columns(
+            (pl.col("county_code").cast(pl.String) + "_" + pl.col("site_num").cast(pl.String)
+             + "_" + pl.col("poc").cast(pl.String)).alias("monitor_id")
+        )
+        )
+
+        # Save hourly data
+        hourly_no_data = (no_data
+                          .filter(
+            pl.col("sample_duration") == "1 HOUR")
+                          .with_columns(
+            pl.col("sample_measurement")
+            .is_not_null()
+            .cast(pl.Int64)
+            .sum()
+            .over(["monitor_id", "date_local"])
+            .alias("num_hrly_obs"))
+                          .filter(
+            pl.col("num_hrly_obs") >= 18)
+                          .with_columns(
+            pl.col("date_local").str.to_datetime(format="%Y-%m-%d"))
+                          .with_columns(
+            pl.col("date_local").dt.date().alias("date"),
+            pl.col("24_hour_local").str.split(":").list.get(0).cast(pl.Int64).alias("hour"))
+                          .rename({"sample_measurement": "no2_hrly"})
+                          .with_columns(
+            (pl.col("no2_hrly") / 1000).alias("no2_hrly"))
+                          .select("latitude", "longitude", "datum", "state_code", "county_code",
+                                  "monitor_id", "site_num", "poc", "no2_hrly", "date", "hour")
+                          )
+
+        hourly_no_data.write_csv(self.output_data_path/"chicago_no2_2000_2012_hourly.csv")
+
+        # Save daily data
+        daily_no_data = (no_data
+                         .filter(
+            ~pl.all_horizontal(pl.all().is_null()) |
+             pl.col("sample_duration") == "8-HR RUN AVG BEGIN HOUR")
+                         .with_columns(
+            pl.when(pl.col("sample_frequency") == "")
+            .then(None)
+            .otherwise(pl.col("sample_frequency"))
+            .alias("sample_frequency"))
+        .with_columns(
+            pl.col("sample_measurement")
+            .is_not_null()
+            .cast(pl.Int64)
+            .sum()
+            .over(["monitor_id", "date_local", "sample_duration"])
+            .alias("num_hrly_obs_no2"),
+            pl.col("sample_measurement")
+            .max()
+            .over(["monitor_id", "date_local", "sample_duration"])
+            .alias("temp_max"),
+            pl.col("sample_measurement")
+            .mean()
+            .over(["monitor_id", "date_local", "sample_duration"])
+            .alias("temp_avg")
+        )
+                         )
+
+
+
+
+
+
 
 
 
