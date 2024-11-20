@@ -199,15 +199,15 @@ class DataPreprocessor:
             .mean()
             .over(["monitor_id", "date_local", "sample_duration"])
             .alias("avg_co"))
-                         .filter(
-            pl.col("num_hrly_obs_co") >= 18)  # original code uses num_hrly_obs, but they are equivalent
                          .with_columns(
             pl.col("date_local").str.to_datetime(format="%Y-%m-%d"))
                          .with_columns(
             pl.col("date_local").dt.date().alias("date"))
-                         .sort("monitor_id", "date_local")
+                         .sort("monitor_id", "date")
                          .unique(["monitor_id", "date"])
-                         .sort("monitor_id", "date_local")
+                         .filter(
+            pl.col("num_hrly_obs_co") >= 18)  # original code uses num_hrly_obs, but they are equivalent
+                         .sort("monitor_id", "date")
                          .drop(cs.contains("gmt"))
                          )
 
