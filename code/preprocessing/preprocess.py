@@ -51,13 +51,13 @@ class DataPreprocessor:
         # Save part1 crime data
         crime_data.filter(
             pl.col("part1") == 1
-        ).write_csv(self.output_data_path / "chicago_part1_crimes.csv")
+        ).write_csv(self.output_data_path/"chicago_part1_crimes.csv")
 
         # Save all crimes
         crime_data.drop(
             ["block", "description", "location_description", "beat", "district",
              "ward", "community_area", "x_coordinate", "y_coordinate", "location"]
-        ).write_csv(self.output_data_path / "chicago_all_crimes.csv")
+        ).write_csv(self.output_data_path/"chicago_all_crimes.csv")
 
 
     def _extract_crime_interstate_distance(self):
@@ -133,9 +133,11 @@ class DataPreprocessor:
         )
                                  )
 
-        crime_interstate_wide.write_csv(self.output_data_path / "crime_road_distances.csv")
+        crime_interstate_wide.write_csv(self.output_data_path/"crime_road_distances.csv")
 
 
+    def _extract_chicago_aqi(self):
+        aqi_data = pl.read_csv(self.input_data_path/"")
 
 
 
