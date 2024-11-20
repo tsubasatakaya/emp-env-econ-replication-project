@@ -281,18 +281,14 @@ class DataPreprocessor:
             .over(["monitor_id", "date_local", "sample_duration"])
             .alias("temp_avg"))
                          .with_columns(
-            pl.when(pl.col("sample_duration") == "24-HR BLK AVG")
-            .then(None)
-            .otherwise(pl.col("temp_obs").max().over(["monitor_id", "date_local"]))
-            .alias("num_hrly_obs_pm10"),
-            pl.when(pl.col("sample_duration") == "24-HR BLK AVG")
-            .then(None)
-            .otherwise(pl.col("temp_max").max().over(["monitor_id", "date_local"]))
-            .alias("max24hr_pm10_derived"),
-            pl.when(pl.col("sample_duration") == "24-HR BLK AVG")
-            .then(None)
-            .otherwise(pl.col("temp_avg").mean().over(["monitor_id", "date_local"]))
-            .alias("avg24hr_pm10_derived"),)
+            [pl.when(pl.col("sample_duration") == "24-HR BLK AVG")
+             .then(None)
+             .otherwise(pl.col(col))
+             .alias(col) for col in ["temp_obs", "temp_max", "temp_avg"]])
+                         .with_columns(
+            pl.col("temp_obs").max().over(["monitor_id", "date_local"]).alias("num_hrly_obs_pm10"),
+            pl.col("temp_max").max().over(["monitor_id", "date_local"]).alias("max24hr_pm10_derived"),
+            pl.col("temp_avg").max().over(["monitor_id", "date_local"]).alias("avg24hr_pm10_derived"),)
                          .sort("monitor_id", "date_local", "24_hour_local", "sample_frequency")
                          .with_columns(
             pl.when(
@@ -321,10 +317,15 @@ class DataPreprocessor:
                          .with_columns(
             pl.col("date_local").dt.date().alias("date"))
                          .drop(cs.contains("gmt"))
+                         .rename({"sample_measurement": "daily_pm10_notderived"})
+                         .with_columns(
+            pl.when(pl.col("num_hrly_obs_pm10").is_null())
+            .then(None)
+            .otherwise(pl.col("max24hr_pm10_derived"))
+            .alias("max24hr_pm10_derived"))
         )
 
-
-        daily_co_data.write_csv(self.output_data_path/"chicago_co_2000_2012_daily.csv")
+        daily_pm_data.write_csv(self.output_data_path/"chicago_pm10_2000_2012_daily.csv")
 
 
 
