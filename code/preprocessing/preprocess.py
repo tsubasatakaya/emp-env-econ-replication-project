@@ -329,17 +329,26 @@ class DataPreprocessor:
 
     def _extract_chicago_no2(self):
         temp_1 = pl.read_csv(self.input_data_path/"no2_chicago_20000101_20041231.txt",
-                             separator=",", null_values=["END OF FILE"], infer_schema_length=10000)
+                             separator=",", null_values=["END OF FILE"],
+                             schema_overrides={col: pl.String for col in ["Sample Measurement", "Horizontal Accuracy"]},
+                             infer_schema_length=10000)
         temp_2 = pl.read_csv(self.input_data_path/"no2_chicago_20050101_20091231.txt",
-                             separator=",", null_values=["END OF FILE"], infer_schema_length=10000)
+                             separator=",", null_values=["END OF FILE"],
+                             schema_overrides={col: pl.String for col in ["Sample Measurement", "Horizontal Accuracy"]},
+                             infer_schema_length=10000)
         temp_3 = pl.read_csv(self.input_data_path/"no2_chicago_20100101_20121231.txt",
-                             separator=",", null_values=["END OF FILE"], infer_schema_length=10000)
+                             separator=",", null_values=["END OF FILE"],
+                             schema_overrides={col: pl.String for col in ["Sample Measurement", "Horizontal Accuracy"]},
+                             infer_schema_length=10000)
 
         no_data = (pl.concat([temp_1, temp_2, temp_3])
         .rename(lambda col: col.lower().replace(" ", "_"))
         .with_columns(
             (pl.col("county_code").cast(pl.String) + "_" + pl.col("site_num").cast(pl.String)
-             + "_" + pl.col("poc").cast(pl.String)).alias("monitor_id")
+             + "_" + pl.col("poc").cast(pl.String)).alias("monitor_id"),)
+        .with_columns(
+            pl.col("sample_measurement").cast(pl.Float64),
+            pl.col("horizontal_accuracy").cast(pl.Float64)
         )
         )
 
@@ -373,14 +382,21 @@ class DataPreprocessor:
         # Save daily data
         daily_no_data = (no_data
                          .filter(
-            ~pl.all_horizontal(pl.all().is_null()) |
-             pl.col("sample_duration") == "8-HR RUN AVG BEGIN HOUR")
+            (~pl.all_horizontal(pl.all().is_null())) |
+            (pl.col("sample_duration") == "8-HR RUN AVG BEGIN HOUR"))
+                         .with_columns(
+            pl.col("sample_measurement")
+            .is_not_null()
+            .cast(pl.Int64)
+            .sum()
+            .over(["monitor_id", "date_local"])
+            .alias("num_hrly_obs"))
                          .with_columns(
             pl.when(pl.col("sample_frequency") == "")
             .then(None)
             .otherwise(pl.col("sample_frequency"))
             .alias("sample_frequency"))
-        .with_columns(
+                         .with_columns(
             pl.col("sample_measurement")
             .is_not_null()
             .cast(pl.Int64)
@@ -390,15 +406,27 @@ class DataPreprocessor:
             pl.col("sample_measurement")
             .max()
             .over(["monitor_id", "date_local", "sample_duration"])
-            .alias("temp_max"),
+            .alias("max_no2"),
             pl.col("sample_measurement")
             .mean()
             .over(["monitor_id", "date_local", "sample_duration"])
-            .alias("temp_avg")
-        )
+            .alias("avg_no2"))
+                         .with_columns(
+            (pl.col("max_no2") / 1000).alias("max_no2"),
+            (pl.col("avg_no2") / 1000).alias("avg_no2"),)
+                         .with_columns(
+            pl.col("date_local").str.to_datetime(format="%Y-%m-%d"))
+                         .with_columns(
+            pl.col("date_local").dt.date().alias("date"))
+                         .sort("monitor_id", "date")
+                         .unique(["monitor_id", "date"])
+                         .filter(
+            pl.col("num_hrly_obs") >= 18)
+                         .sort("monitor_id", "date")
+                         .drop(cs.contains("gmt"), pl.col("num_hrly_obs"))
                          )
 
-
+        daily_no_data.write_csv(self.output_data_path / "chicago_no2_2000_2012_daily.csv")
 
 
 
@@ -411,7 +439,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor._extract_chicago_pm10()
+    preprocessor._extract_chicago_no2()
 
 
 
