@@ -137,8 +137,9 @@ class DataPreprocessor:
 
 
     def _extract_chicago_aqi(self):
-        aqi_data = pl.read_csv(self.input_data_path/"")
-
+        aqi_data = pd.read_stata(self.input_data_path/"chicago_aqi_2000_2015.dta")
+        aqi_data = pl.from_pandas(aqi_data)
+        aqi_data.write_csv(self.output_data_path/"chicago_aqi_2000_2015.csv")
 
 
 
@@ -147,7 +148,6 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-
 
 
 
