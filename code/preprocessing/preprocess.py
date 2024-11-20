@@ -189,18 +189,18 @@ class DataPreprocessor:
             .is_not_null()
             .cast(pl.Int64)
             .sum()
-            .over(["monitor_id", "date_local"])
+            .over(["monitor_id", "date_local", "sample_duration"])  # this sample_duration is redundant
             .alias("num_hrly_obs_co"),
             pl.col("sample_measurement")
             .max()
-            .over(["monitor_id", "date_local"])
+            .over(["monitor_id", "date_local", "sample_duration"])
             .alias("max_co"),
             pl.col("sample_measurement")
             .mean()
-            .over(["monitor_id", "date_local"])
+            .over(["monitor_id", "date_local", "sample_duration"])
             .alias("avg_co"))
                          .filter(
-            pl.col("num_hrly_obs") >= 18)
+            pl.col("num_hrly_obs_co") >= 18)  # original code uses num_hrly_obs, but they are equivalent
                          .with_columns(
             pl.col("date_local").str.to_datetime(format="%Y-%m-%d"))
                          .with_columns(
