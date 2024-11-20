@@ -59,7 +59,6 @@ class DataPreprocessor:
              "ward", "community_area", "x_coordinate", "y_coordinate", "location"]
         ).write_csv(self.output_data_path/"chicago_all_crimes.csv")
 
-
     def _extract_crime_interstate_distance(self):
         crime_interstate_data = (pl.read_csv(self.input_data_path/"Chicago_Crime_Interstate_Distance_0606.csv")
                                  .rename(lambda col: col.lower().replace(" ", "_")))
@@ -135,11 +134,86 @@ class DataPreprocessor:
 
         crime_interstate_wide.write_csv(self.output_data_path/"crime_road_distances.csv")
 
-
     def _extract_chicago_aqi(self):
         aqi_data = pd.read_stata(self.input_data_path/"chicago_aqi_2000_2015.dta")
         aqi_data = pl.from_pandas(aqi_data)
         aqi_data.write_csv(self.output_data_path/"chicago_aqi_2000_2015.csv")
+
+    def _extract_chicago_co(self):
+        temp_1 = pl.read_csv(self.input_data_path/"co_chicago_20000101_20041231.txt",
+                             separator=",", null_values=["END OF FILE"])
+        temp_2 = pl.read_csv(self.input_data_path/"co_chicago_20050101_20091231.txt",
+                             separator=",", null_values=["END OF FILE"])
+        temp_3 = pl.read_csv(self.input_data_path/"co_chicago_20100101_20121231.txt",
+                             separator=",", null_values=["END OF FILE"])
+
+        co_data = (pl.concat([temp_1, temp_2, temp_3])
+                   .rename(lambda col: col.lower().replace(" ", "_"))
+                   .with_columns(
+            (pl.col("county_code").cast(pl.String) + "_" + pl.col("site_num").cast(pl.String)
+             + "_" + pl.col("poc").cast(pl.String)).alias("monitor_id")
+        )
+                   )
+
+        # Save hourly data
+        hourly_co_data = (co_data
+                          .filter(
+            pl.col("sample_duration") == "1 HOUR")
+                          .with_columns(
+            pl.col("sample_measurement")
+            .is_not_null()
+            .cast(pl.Int64)
+            .sum()
+            .over(["monitor_id", "date_local"])
+            .alias("num_hrly_obs"))
+                          .filter(
+            pl.col("num_hrly_obs") >= 18)
+                          .with_columns(
+            pl.col("date_local").str.to_datetime(format="%Y-%m-%d"))
+                          .with_columns(
+            pl.col("date_local").dt.date().alias("date"),
+            pl.col("24_hour_local").str.split(":").list.get(0).cast(pl.Int64).alias("hour"))
+                          .rename({"sample_measurement": "co_hrly"})
+                          .select("latitude", "longitude", "datum", "state_code", "county_code",
+                                  "monitor_id", "site_num", "poc", "co_hrly", "date", "hour")
+                          )
+
+        hourly_co_data.write_csv(self.output_data_path/"chicago_co_2000_2012_hourly.csv")
+
+        # Save daily data
+        daily_co_data = (co_data
+                         .filter(
+            pl.col("sample_duration") == "1 HOUR")
+                         .with_columns(
+            pl.col("sample_measurement")
+            .is_not_null()
+            .cast(pl.Int64)
+            .sum()
+            .over(["monitor_id", "date_local"])
+            .alias("num_hrly_obs"),
+            pl.col("sample_measurement")
+            .max()
+            .over(["monitor_id", "date_local"])
+            .alias("max_co"),
+            pl.col("sample_measurement")
+            .mean()
+            .over(["monitor_id", "date_local"])
+            .alias("avg_co"))
+                         .filter(
+            pl.col("num_hrly_obs") >= 18)
+                         .with_columns(
+            pl.col("date_local").str.to_datetime(format="%Y-%m-%d"))
+                         .with_columns(
+            pl.col("date_local").dt.date().alias("date"))
+                         .sort("monitor_id", "date_local")
+                         .unique(["monitor_id", "date"])
+                         .sort("monitor_id", "date_local")
+                         .drop(cs.contains("gmt"))
+                         )
+
+        daily_co_data.write_csv(self.output_data_path/"chicago_co_2000_2012_daily.csv")
+
+
 
 
 
@@ -148,7 +222,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-
+    preprocessor._extract_chicago_co()
 
 
 
