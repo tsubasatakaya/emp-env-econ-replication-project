@@ -426,15 +426,15 @@ class DataPreprocessor:
     def _extract_chicago_ozone(self):
         temp_1 = pl.read_csv(self.input_data_path/"ozone_chicago_20000101_20050101.txt",
                              separator=",", null_values=["END OF FILE"],
-                             # schema_overrides={col: pl.String for col in ["Sample Measurement", "Horizontal Accuracy"]},
+                             schema_overrides={col: pl.String for col in ["Horizontal Accuracy"]},
                              infer_schema_length=10000)
         temp_2 = pl.read_csv(self.input_data_path/"ozone_chicago_20050102_20091231.txt",
                              separator=",", null_values=["END OF FILE"],
-                             # schema_overrides={col: pl.String for col in ["Sample Measurement", "Horizontal Accuracy"]},
+                             schema_overrides={col: pl.String for col in ["Horizontal Accuracy"]},
                              infer_schema_length=10000)
         temp_3 = pl.read_csv(self.input_data_path/"ozone_chicago_20100101_20121231.txt",
                              separator=",", null_values=["END OF FILE"],
-                             # schema_overrides={col: pl.String for col in ["Sample Measurement", "Horizontal Accuracy"]},
+                             schema_overrides={col: pl.String for col in ["Horizontal Accuracy"]},
                              infer_schema_length=10000)
 
         ozone_data = (pl.concat([temp_1, temp_2, temp_3])
@@ -442,10 +442,9 @@ class DataPreprocessor:
         .with_columns(
             (pl.col("county_code").cast(pl.String) + "_" + pl.col("site_num").cast(pl.String)
              + "_" + pl.col("poc").cast(pl.String)).alias("monitor_id"),)
-        # .with_columns(
-        #     pl.col("sample_measurement").cast(pl.Float64),
-        #     pl.col("horizontal_accuracy").cast(pl.Float64)
-        # )
+        .with_columns(
+            pl.col("horizontal_accuracy").cast(pl.Float64)
+        )
         )
 
         # Save hourly data
@@ -490,7 +489,7 @@ class DataPreprocessor:
             .is_not_null()
             .cast(pl.Int64)
             .sum()
-            .over(["monitor_id", "date_local", "sample_duration"])  # this sample_duration is redundant
+            .over(["monitor_id", "date_local", "sample_duration"])
             .alias("num_hrly_obs_ozone"),
             pl.col("sample_measurement")
             .max()
@@ -507,12 +506,12 @@ class DataPreprocessor:
                             .sort("monitor_id", "date")
                             .unique(["monitor_id", "date"])
                             .filter(
-            pl.col("num_hrly_obs_co") >= 18)  # original code uses num_hrly_obs, but they are equivalent
+            pl.col("num_hrly_obs") >= 18)  # original code uses num_hrly_obs, but they are equivalent
                             .sort("monitor_id", "date")
-                            .drop(cs.contains("gmt"))
+                            .drop(cs.contains("gmt"), pl.col("num_hrly_obs"))
                             )
 
-        daily_co_data.write_csv(self.output_data_path/"chicago_co_2000_2012_daily.csv")
+        daily_ozone_data.write_csv(self.output_data_path/"chicago_ozone_2000_2012_daily.csv")
 
 
 
@@ -523,7 +522,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor._extract_chicago_no2()
+    preprocessor._extract_chicago_ozone()
 
 
 
