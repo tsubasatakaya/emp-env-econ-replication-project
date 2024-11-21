@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import polars as pl
 import polars.selectors as cs
+from billiard.five import values
 
 
 class DataPreprocessor:
@@ -522,7 +523,6 @@ class DataPreprocessor:
 
     def _merge_pollution(self):
         # AQI ---------------------------------------------------------------------------------------------------------
-        # self._extract_chicago_aqi()
         # aqi_data = (pl.read_csv(self.output_data_path/"chicago_aqi_2000_2015.csv")
         #             .with_columns(
         #     pl.col("aqi").cast(pl.Float64))
@@ -608,6 +608,37 @@ class DataPreprocessor:
         #            )
 
         # OZONE ---------------------------------------------------------------------------------------------------------
+        ozone_data = (pl.read_csv(self.output_data_path / "chicago_ozone_2000_2012_daily.csv")
+                      .with_columns(
+            pl.col("date").str.to_datetime(format="%Y-%m-%d"))
+                      .with_columns(
+            pl.col("date").dt.year().alias("year")
+        )
+                      )
+
+        ozone_data = (ozone_data
+                      .filter(
+            pl.col("monitor_id").is_in(["31_1003_2", "31_1601_1", "31_1_1", "31_32_1", "31_4002_1",
+                                        "31_4007_1", "31_4201_1", "31_64_1", "31_7002_1", "31_72_1", "31_76_1"]))
+                      .select("avg_ozone", "max_ozone", "monitor_id", "date")
+                      .sort("monitor_id", "date")
+                      )
+
+        ozone_out = (ozone_data
+                     .pivot(
+            on="monitor_id", values=cs.contains("ozone"))
+                     .with_columns(
+            pl.mean_horizontal(pl.col("^avg.*31_(64_1|7002_1)$")).alias("avg_ozone_mean"),
+            pl.mean_horizontal(pl.col("^max.*31_(64_1|7002_1)$")).alias("max_ozone_mean"))
+                     .with_columns(
+            ((pl.col("avg_ozone_31_64_1").is_not_null().cast(pl.Int64) +
+              pl.col("avg_ozone_31_7002_1").is_not_null().cast(pl.Int64)) / 2
+             ).alias("monitor_pct_ozone"))
+                     .sort("date")
+                     .select("avg_ozone_mean", "max_ozone_mean", "date", "monitor_pct_ozone")
+                     )
+
+
 
 
 
