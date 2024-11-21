@@ -392,11 +392,6 @@ class DataPreprocessor:
             .over(["monitor_id", "date_local"])
             .alias("num_hrly_obs"))
                          .with_columns(
-            pl.when(pl.col("sample_frequency") == "")
-            .then(None)
-            .otherwise(pl.col("sample_frequency"))
-            .alias("sample_frequency"))
-                         .with_columns(
             pl.col("sample_measurement")
             .is_not_null()
             .cast(pl.Int64)
