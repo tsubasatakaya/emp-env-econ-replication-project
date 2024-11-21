@@ -428,7 +428,96 @@ class DataPreprocessor:
 
         daily_no_data.write_csv(self.output_data_path / "chicago_no2_2000_2012_daily.csv")
 
+    def _extract_chicago_ozone(self):
+        temp_1 = pl.read_csv(self.input_data_path/"ozone_chicago_20000101_20050101.txt",
+                             separator=",", null_values=["END OF FILE"],
+                             # schema_overrides={col: pl.String for col in ["Sample Measurement", "Horizontal Accuracy"]},
+                             infer_schema_length=10000)
+        temp_2 = pl.read_csv(self.input_data_path/"ozone_chicago_20050102_20091231.txt",
+                             separator=",", null_values=["END OF FILE"],
+                             # schema_overrides={col: pl.String for col in ["Sample Measurement", "Horizontal Accuracy"]},
+                             infer_schema_length=10000)
+        temp_3 = pl.read_csv(self.input_data_path/"ozone_chicago_20100101_20121231.txt",
+                             separator=",", null_values=["END OF FILE"],
+                             # schema_overrides={col: pl.String for col in ["Sample Measurement", "Horizontal Accuracy"]},
+                             infer_schema_length=10000)
 
+        ozone_data = (pl.concat([temp_1, temp_2, temp_3])
+        .rename(lambda col: col.lower().replace(" ", "_"))
+        .with_columns(
+            (pl.col("county_code").cast(pl.String) + "_" + pl.col("site_num").cast(pl.String)
+             + "_" + pl.col("poc").cast(pl.String)).alias("monitor_id"),)
+        # .with_columns(
+        #     pl.col("sample_measurement").cast(pl.Float64),
+        #     pl.col("horizontal_accuracy").cast(pl.Float64)
+        # )
+        )
+
+        # Save hourly data
+        hourly_ozone_data = (ozone_data
+                             .filter(
+            pl.col("sample_duration") == "1 HOUR")
+                             .with_columns(
+            pl.col("sample_measurement")
+            .is_not_null()
+            .cast(pl.Int64)
+            .sum()
+            .over(["monitor_id", "date_local"])
+            .alias("num_hrly_obs"))
+                             .filter(
+            pl.col("num_hrly_obs") >= 18)
+                             .with_columns(
+            pl.col("date_local").str.to_datetime(format="%Y-%m-%d"))
+                             .with_columns(
+            pl.col("date_local").dt.date().alias("date"),
+            pl.col("24_hour_local").str.split(":").list.get(0).cast(pl.Int64).alias("hour"))
+                             .rename({"sample_measurement": "ozone_hrly"})
+                             .select("latitude", "longitude", "datum", "state_code", "county_code",
+                                     "monitor_id", "site_num", "poc", "ozone_hrly", "date", "hour")
+                             )
+
+        hourly_ozone_data.write_csv(self.output_data_path/"chicago_ozone_2000_2012_hourly.csv")
+
+        # Save daily data
+        daily_ozone_data = (ozone_data
+                            .filter(
+            (~pl.all_horizontal(pl.all().is_null())) |
+            (pl.col("sample_duration") == "8-HR RUN AVG BEGIN HOUR"))
+                            .with_columns(
+            pl.col("sample_measurement")
+            .is_not_null()
+            .cast(pl.Int64)
+            .sum()
+            .over(["monitor_id", "date_local"])
+            .alias("num_hrly_obs"))
+                            .with_columns(
+            pl.col("sample_measurement")
+            .is_not_null()
+            .cast(pl.Int64)
+            .sum()
+            .over(["monitor_id", "date_local", "sample_duration"])  # this sample_duration is redundant
+            .alias("num_hrly_obs_ozone"),
+            pl.col("sample_measurement")
+            .max()
+            .over(["monitor_id", "date_local", "sample_duration"])
+            .alias("max_ozone"),
+            pl.col("sample_measurement")
+            .mean()
+            .over(["monitor_id", "date_local", "sample_duration"])
+            .alias("avg_ozone"))
+                            .with_columns(
+            pl.col("date_local").str.to_datetime(format="%Y-%m-%d"))
+                            .with_columns(
+            pl.col("date_local").dt.date().alias("date"))
+                            .sort("monitor_id", "date")
+                            .unique(["monitor_id", "date"])
+                            .filter(
+            pl.col("num_hrly_obs_co") >= 18)  # original code uses num_hrly_obs, but they are equivalent
+                            .sort("monitor_id", "date")
+                            .drop(cs.contains("gmt"))
+                            )
+
+        daily_co_data.write_csv(self.output_data_path/"chicago_co_2000_2012_daily.csv")
 
 
 
