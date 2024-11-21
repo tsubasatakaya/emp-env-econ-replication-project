@@ -513,6 +513,13 @@ class DataPreprocessor:
 
         daily_ozone_data.write_csv(self.output_data_path/"chicago_ozone_2000_2012_daily.csv")
 
+    def process_pollution_data(self):
+        self._extract_chicago_aqi()
+        self._extract_chicago_co()
+        self._extract_chicago_pm10()
+        self._extract_chicago_no2()
+        self._extract_chicago_ozone()
+
     def _merge_pollution(self):
         # AQI ---------------------------------------------------------------------------------------------------------
         # self._extract_chicago_aqi()
