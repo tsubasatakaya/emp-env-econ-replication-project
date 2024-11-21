@@ -521,189 +521,189 @@ class DataPreprocessor:
         self._extract_chicago_no2()
         self._extract_chicago_ozone()
 
-    def _merge_pollution(self):
+    def merge_pollution(self):
         # AQI ---------------------------------------------------------------------------------------------------------
-        # aqi_data = (pl.read_csv(self.output_data_path/"chicago_aqi_2000_2015.csv")
-        #             .with_columns(
-        #     pl.col("aqi").cast(pl.Float64))
-        #             )
-        # aqi_data  = (aqi_data
-        #              .with_columns(
-        #     pl.col("datelocal").str.to_datetime(format="%Y-%m-%d"))
-        #              .with_columns(
-        #     pl.col("datelocal").dt.date().alias("date"))
-        #              .filter(
-        #     pl.col("date").dt.year().is_between(2000, 2012, closed="both"))
-        #              .with_columns(
-        #     (pl.col("countycode").cast(pl.String) + "_" + pl.col("sitenum").cast(pl.String)
-        #      + "_" + pl.col("poc").cast(pl.String)).alias("monitor_id"))
-        #              .filter(
-        #     pl.col("aqi").is_not_null())
-        #              .with_columns(
-        #     pl.when(pl.col("parametername").str.contains("PM10"))
-        #     .then(pl.lit("PM10"))
-        #     .when(pl.col("parametername").str.contains("Carbon monoxide"))
-        #     .then(pl.lit("CO"))
-        #     .when(pl.col("parametername").str.contains("Ozone"))
-        #     .then(pl.lit("Ozone"))
-        #     .when(pl.col("parametername").str.contains("Nitrogen dioxide"))
-        #     .then(pl.lit("NO2"))
-        #     .otherwise(None)
-        #     .alias("pollutant_name"))
-        #               .filter(
-        #     pl.col("pollutant_name").is_not_null())
-        #              )
-        #
-        # temp_aqi = (aqi_data
-        #             .filter(
-        #     pl.col("cityname").is_in(["Chicago"]))
-        #             .group_by("date", "pollutant_name")
-        #             .agg(
-        #     pl.col("aqi").mean().alias("aqi_mean_chicago"))
-        #             .select("date", "aqi_mean_chicago", "pollutant_name")
-        #             .sort("pollutant_name", "date")
-        #             )
-        #
-        # aqi_data_by_date_pollutant = (aqi_data
-        #                               .with_columns(
-        #     pl.when(
-        #         (pl.col("pollutant_name") == "Ozone") & (pl.col("monitor_id").is_in(["31_64_1", "31_7002_1"])))
-        #     .then(pl.lit(1))
-        #     .when(
-        #         (pl.col("pollutant_name") == "CO") & (
-        #             pl.col("monitor_id").is_in(["31_3103_1", "31_4002_1", "31_6004_1", "31_63_1"])))
-        #     .then(pl.lit(1))
-        #     .when(
-        #         (pl.col("pollutant_name") == "NO2") & (
-        #             pl.col("monitor_id").is_in(["31_3103_1", "31_4002_1", "31_63_1"])))
-        #     .then(pl.lit(1))
-        #     .when(
-        #         (pl.col("pollutant_name") == "PM10") & (
-        #             pl.col("monitor_id").is_in(["31_1016_3", "31_22_3"])))
-        #     .then(pl.lit(1))
-        #     .otherwise(0)
-        #     .alias("keeplist"))
-        #                               .filter(pl.col("keeplist") == 1)
-        #                               .group_by("date", "pollutant_name")
-        #                               .agg(
-        #     pl.col("aqi").mean().alias("aqi_mean_sample"))
-        #                               .select("date", "aqi_mean_sample", "pollutant_name")
-        #                               .sort("pollutant_name", "date")
-        #                               )
-        #
-        # aqi_out = (aqi_data_by_date_pollutant
-        #            .join(
-        #     temp_aqi, on=["date", "pollutant_name"], how="left", validate="1:1")
-        #            .group_by("date")
-        #            .agg(
-        #     pl.col("aqi_mean_sample").max().alias("max_aqi_sample"),
-        #     pl.col("pollutant_name").filter(
-        #         pl.col("aqi_mean_sample") == pl.col("aqi_mean_sample").max()
-        #     ).first().alias("max_aqi_sample_poll"),
-        #     pl.col("aqi_mean_chicago").max().alias("max_aqi_chicago"),
-        #     pl.col("pollutant_name").filter(
-        #         pl.col("aqi_mean_chicago") == pl.col("aqi_mean_chicago").max()
-        #     ).first().alias("max_aqi_chicago_poll"))
-        #            .sort("date")
-        #            )
+        aqi_data = (pl.read_csv(self.output_data_path/"chicago_aqi_2000_2015.csv")
+                    .with_columns(
+            pl.col("aqi").cast(pl.Float64))
+                    )
+        aqi_data  = (aqi_data
+                     .with_columns(
+            pl.col("datelocal").str.to_datetime(format="%Y-%m-%d"))
+                     .with_columns(
+            pl.col("datelocal").dt.date().alias("date"))
+                     .filter(
+            pl.col("date").dt.year().is_between(2000, 2012, closed="both"))
+                     .with_columns(
+            (pl.col("countycode").cast(pl.String) + "_" + pl.col("sitenum").cast(pl.String)
+             + "_" + pl.col("poc").cast(pl.String)).alias("monitor_id"))
+                     .filter(
+            pl.col("aqi").is_not_null())
+                     .with_columns(
+            pl.when(pl.col("parametername").str.contains("PM10"))
+            .then(pl.lit("PM10"))
+            .when(pl.col("parametername").str.contains("Carbon monoxide"))
+            .then(pl.lit("CO"))
+            .when(pl.col("parametername").str.contains("Ozone"))
+            .then(pl.lit("Ozone"))
+            .when(pl.col("parametername").str.contains("Nitrogen dioxide"))
+            .then(pl.lit("NO2"))
+            .otherwise(None)
+            .alias("pollutant_name"))
+                      .filter(
+            pl.col("pollutant_name").is_not_null())
+                     )
+
+        temp_aqi = (aqi_data
+                    .filter(
+            pl.col("cityname").is_in(["Chicago"]))
+                    .group_by("date", "pollutant_name")
+                    .agg(
+            pl.col("aqi").mean().alias("aqi_mean_chicago"))
+                    .select("date", "aqi_mean_chicago", "pollutant_name")
+                    .sort("pollutant_name", "date")
+                    )
+
+        aqi_data_by_date_pollutant = (aqi_data
+                                      .with_columns(
+            pl.when(
+                (pl.col("pollutant_name") == "Ozone") & (pl.col("monitor_id").is_in(["31_64_1", "31_7002_1"])))
+            .then(pl.lit(1))
+            .when(
+                (pl.col("pollutant_name") == "CO") & (
+                    pl.col("monitor_id").is_in(["31_3103_1", "31_4002_1", "31_6004_1", "31_63_1"])))
+            .then(pl.lit(1))
+            .when(
+                (pl.col("pollutant_name") == "NO2") & (
+                    pl.col("monitor_id").is_in(["31_3103_1", "31_4002_1", "31_63_1"])))
+            .then(pl.lit(1))
+            .when(
+                (pl.col("pollutant_name") == "PM10") & (
+                    pl.col("monitor_id").is_in(["31_1016_3", "31_22_3"])))
+            .then(pl.lit(1))
+            .otherwise(0)
+            .alias("keeplist"))
+                                      .filter(pl.col("keeplist") == 1)
+                                      .group_by("date", "pollutant_name")
+                                      .agg(
+            pl.col("aqi").mean().alias("aqi_mean_sample"))
+                                      .select("date", "aqi_mean_sample", "pollutant_name")
+                                      .sort("pollutant_name", "date")
+                                      )
+
+        aqi_out = (aqi_data_by_date_pollutant
+                   .join(
+            temp_aqi, on=["date", "pollutant_name"], how="left", validate="1:1")
+                   .group_by("date")
+                   .agg(
+            pl.col("aqi_mean_sample").max().alias("max_aqi_sample"),
+            pl.col("pollutant_name").filter(
+                pl.col("aqi_mean_sample") == pl.col("aqi_mean_sample").max()
+            ).first().alias("max_aqi_sample_poll"),
+            pl.col("aqi_mean_chicago").max().alias("max_aqi_chicago"),
+            pl.col("pollutant_name").filter(
+                pl.col("aqi_mean_chicago") == pl.col("aqi_mean_chicago").max()
+            ).first().alias("max_aqi_chicago_poll"))
+                   .sort("date")
+                   )
 
         # OZONE ---------------------------------------------------------------------------------------------------------
-        # ozone_data = (pl.read_csv(self.output_data_path / "chicago_ozone_2000_2012_daily.csv")
-        #               .with_columns(
-        #     pl.col("date").str.to_datetime(format="%Y-%m-%d"))
-        #               .with_columns(
-        #     pl.col("date").dt.year().alias("year")
-        # )
-        #               )
-        #
-        # ozone_data = (ozone_data
-        #               .filter(
-        #     pl.col("monitor_id").is_in(["31_1003_2", "31_1601_1", "31_1_1", "31_32_1", "31_4002_1",
-        #                                 "31_4007_1", "31_4201_1", "31_64_1", "31_7002_1", "31_72_1", "31_76_1"]))
-        #               .select("avg_ozone", "max_ozone", "monitor_id", "date")
-        #               .sort("monitor_id", "date")
-        #               )
-        #
-        # ozone_out = (ozone_data
-        #              .pivot(
-        #     on="monitor_id", values=cs.contains("ozone"))
-        #              .with_columns(
-        #     pl.mean_horizontal(pl.col("^avg.*31_(64_1|7002_1)$")).alias("avg_ozone_mean"),
-        #     pl.mean_horizontal(pl.col("^max.*31_(64_1|7002_1)$")).alias("max_ozone_mean"))
-        #              .with_columns(
-        #     ((pl.col("avg_ozone_31_64_1").is_not_null().cast(pl.Int64) +
-        #       pl.col("avg_ozone_31_7002_1").is_not_null().cast(pl.Int64)) / 2
-        #      ).alias("monitor_pct_ozone"))
-        #              .sort("date")
-        #              .select("avg_ozone_mean", "max_ozone_mean", "date", "monitor_pct_ozone")
-        #              )
+        ozone_data = (pl.read_csv(self.output_data_path / "chicago_ozone_2000_2012_daily.csv")
+                      .with_columns(
+            pl.col("date").str.to_datetime(format="%Y-%m-%d").dt.date())
+                      .with_columns(
+            pl.col("date").dt.year().alias("year")
+        )
+                      )
+
+        ozone_data = (ozone_data
+                      .filter(
+            pl.col("monitor_id").is_in(["31_1003_2", "31_1601_1", "31_1_1", "31_32_1", "31_4002_1",
+                                        "31_4007_1", "31_4201_1", "31_64_1", "31_7002_1", "31_72_1", "31_76_1"]))
+                      .select("avg_ozone", "max_ozone", "monitor_id", "date")
+                      .sort("monitor_id", "date")
+                      )
+
+        ozone_out = (ozone_data
+                     .pivot(
+            on="monitor_id", values=cs.contains("ozone"))
+                     .with_columns(
+            pl.mean_horizontal(pl.col("^avg.*31_(64_1|7002_1)$")).alias("avg_ozone_mean"),
+            pl.mean_horizontal(pl.col("^max.*31_(64_1|7002_1)$")).alias("max_ozone_mean"))
+                     .with_columns(
+            ((pl.col("avg_ozone_31_64_1").is_not_null().cast(pl.Int64) +
+              pl.col("avg_ozone_31_7002_1").is_not_null().cast(pl.Int64)) / 2
+             ).alias("monitor_pct_ozone"))
+                     .sort("date")
+                     .select("avg_ozone_mean", "max_ozone_mean", "date", "monitor_pct_ozone")
+                     )
 
         # CO ---------------------------------------------------------------------------------------------------------
-        # co_data = (pl.read_csv(self.output_data_path / "chicago_co_2000_2012_daily.csv")
-        #            .with_columns(
-        #     pl.col("date").str.to_datetime(format="%Y-%m-%d"))
-        #            .filter(
-        #     pl.col("monitor_id").is_in(["31_3103_1","31_4002_1","31_6004_1","31_63_1"]))
-        #            )
-        #
-        # co_wide = (co_data
-        #            .select("avg_co", "max_co", "monitor_id", "date")
-        #            .pivot(
-        #     on="monitor_id", values=cs.contains("co"))
-        #            )
-        # avg_cols = co_wide.select(pl.col("^avg.*$")).columns
-        # co_temp = (co_wide
-        #            .with_columns(
-        #     (pl.sum_horizontal([pl.col(col).is_not_null().cast(pl.Int64) for col in avg_cols]) / len(avg_cols))
-        #     .alias("monitor_pct_co"))
-        #            .with_columns(
-        #     pl.mean_horizontal(pl.col("^avg.*$")).alias("avg_co_mean"),
-        #     pl.mean_horizontal(pl.col("^max.*$")).alias("max_co_mean"))
-        #            .drop("avg_co_31_6004_1")  # TODO: author did not drop max_co_31_6004_1
-        #            )
-        #
-        # avg_cols_drop_290 = co_temp.select(pl.col("^avg.*$").exclude("avg_co_mean")).columns
-        # co_out = (co_temp
-        #           .with_columns(
-        #     (pl.sum_horizontal([pl.col(col).is_not_null().cast(pl.Int64) for col in avg_cols_drop_290]) / len(avg_cols_drop_290))
-        #     .alias("monitor_pct_co_drop_290"))
-        #           .with_columns(
-        #     pl.mean_horizontal(pl.col("^avg.*$")).alias("avg_co_mean_drop_290"),
-        #     pl.mean_horizontal(pl.col("^max.*$")).alias("max_co_mean_drop_290"))
-        #           .select(pl.col("^avg_co_mean.*$"), pl.col("^max_co_mean.*$"), "date", pl.col("^monitor_pct_co.*$"))
-        #           .sort("date")
-        #           )
+        co_data = (pl.read_csv(self.output_data_path / "chicago_co_2000_2012_daily.csv")
+                   .with_columns(
+            pl.col("date").str.to_datetime(format="%Y-%m-%d").dt.date())
+                   .filter(
+            pl.col("monitor_id").is_in(["31_3103_1","31_4002_1","31_6004_1","31_63_1"]))
+                   )
+
+        co_wide = (co_data
+                   .select("avg_co", "max_co", "monitor_id", "date")
+                   .pivot(
+            on="monitor_id", values=cs.contains("co"))
+                   )
+        avg_cols = co_wide.select(pl.col("^avg.*$")).columns
+        co_temp = (co_wide
+                   .with_columns(
+            (pl.sum_horizontal([pl.col(col).is_not_null().cast(pl.Int64) for col in avg_cols]) / len(avg_cols))
+            .alias("monitor_pct_co"))
+                   .with_columns(
+            pl.mean_horizontal(pl.col("^avg.*$")).alias("avg_co_mean"),
+            pl.mean_horizontal(pl.col("^max.*$")).alias("max_co_mean"))
+                   .drop("avg_co_31_6004_1")  # TODO: author did not drop max_co_31_6004_1
+                   )
+
+        avg_cols_drop_290 = co_temp.select(pl.col("^avg.*$").exclude("avg_co_mean")).columns
+        co_out = (co_temp
+                  .with_columns(
+            (pl.sum_horizontal([pl.col(col).is_not_null().cast(pl.Int64) for col in avg_cols_drop_290]) / len(avg_cols_drop_290))
+            .alias("monitor_pct_co_drop_290"))
+                  .with_columns(
+            pl.mean_horizontal(pl.col("^avg.*$")).alias("avg_co_mean_drop_290"),
+            pl.mean_horizontal(pl.col("^max.*$")).alias("max_co_mean_drop_290"))
+                  .select(pl.col("^avg_co_mean.*$"), pl.col("^max_co_mean.*$"), "date", pl.col("^monitor_pct_co.*$"))
+                  .sort("date")
+                  )
 
         # NO2 --------------------------------------------------------------------------------------------------------
-        # no_data = (pl.read_csv(self.output_data_path / "chicago_no2_2000_2012_daily.csv")
-        #            .with_columns(
-        #     pl.col("date").str.to_datetime(format="%Y-%m-%d"))
-        #            .filter(
-        #     pl.col("monitor_id").is_in(["31_3103_1","31_4002_1","31_63_1"]))
-        #            )
-        #
-        # no_wide = (no_data
-        #            .select("avg_no2", "max_no2", "monitor_id", "date")
-        #            .pivot(
-        #     on="monitor_id", values=cs.contains("no"))
-        #            )
-        #
-        # avg_cols = no_wide.select(pl.col("^avg.*$")).columns
-        # no_out = (no_wide
-        #           .with_columns(
-        #     (pl.sum_horizontal([pl.col(col).is_not_null().cast(pl.Int64) for col in avg_cols]) / len(avg_cols))
-        #     .alias("monitor_pct_no2"))
-        #           .with_columns(
-        #     pl.mean_horizontal(pl.col("^avg.*$")).alias("avg_no2_mean"),
-        #     pl.mean_horizontal(pl.col("^max.*$")).alias("max_no2_mean"))
-        #           .select("avg_no2_mean", "max_no2_mean", "date", "monitor_pct_no2")
-        #           .sort("date")
-        #            )
+        no_data = (pl.read_csv(self.output_data_path / "chicago_no2_2000_2012_daily.csv")
+                   .with_columns(
+            pl.col("date").str.to_datetime(format="%Y-%m-%d").dt.date())
+                   .filter(
+            pl.col("monitor_id").is_in(["31_3103_1","31_4002_1","31_63_1"]))
+                   )
+
+        no_wide = (no_data
+                   .select("avg_no2", "max_no2", "monitor_id", "date")
+                   .pivot(
+            on="monitor_id", values=cs.contains("no"))
+                   )
+
+        avg_cols = no_wide.select(pl.col("^avg.*$")).columns
+        no_out = (no_wide
+                  .with_columns(
+            (pl.sum_horizontal([pl.col(col).is_not_null().cast(pl.Int64) for col in avg_cols]) / len(avg_cols))
+            .alias("monitor_pct_no2"))
+                  .with_columns(
+            pl.mean_horizontal(pl.col("^avg.*$")).alias("avg_no2_mean"),
+            pl.mean_horizontal(pl.col("^max.*$")).alias("max_no2_mean"))
+                  .select("avg_no2_mean", "max_no2_mean", "date", "monitor_pct_no2")
+                  .sort("date")
+                   )
 
         # PM10 --------------------------------------------------------------------------------------------------------
         pm_data = (pl.read_csv(self.output_data_path / "chicago_pm10_2000_2012_daily.csv")
                    .with_columns(
-            pl.col("date").str.to_datetime(format="%Y-%m-%d"))
+            pl.col("date").str.to_datetime(format="%Y-%m-%d").dt.date())
                    .filter(
             pl.col("monitor_id").is_in(["31_1016_3","31_22_3"]))
                    )
@@ -729,8 +729,19 @@ class DataPreprocessor:
                   .sort("date")
                   )
 
+        # Merge -------------------------------------------------------------------------------------------------------
+        poll_data = (pm_out
+                     .join(
+            co_out, on=["date"], how="left", validate="1:1")
+                     .join(
+            ozone_out, on=["date"], how="left", validate="1:1")
+                     .join(
+            no_out, on=["date"], how="left", validate="1:1")
+                     .join(
+            aqi_out, on=["date"], how="left", validate="1:1")
+                     )
 
-
+        poll_data.write_csv(self.output_data_path / "chicago_pollution_2000_2012.csv")
 
 if __name__ == '__main__':
     source_path = Path("replication_package")
