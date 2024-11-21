@@ -513,6 +513,78 @@ class DataPreprocessor:
 
         daily_ozone_data.write_csv(self.output_data_path/"chicago_ozone_2000_2012_daily.csv")
 
+    def _merge_pollution(self):
+        # AQI ---------------------------------------------------------------------------------------------------------
+        self._extract_chicago_aqi()
+        aqi_data = (pl.read_csv(self.output_data_path/"chicago_aqi_2000_2015.csv")
+                    .with_columns(
+            pl.col("aqi").cast(pl.Float64))
+                    )
+        aqi_data  = (aqi_data
+                     .with_columns(
+            pl.col("datelocal").str.to_datetime(format="%Y-%m-%d"))
+                     .with_columns(
+            pl.col("datelocal").dt.date().alias("date"))
+                     .filter(
+            pl.col("date").dt.year().is_between(2000, 2012, closed="both"))
+                     .with_columns(
+            (pl.col("countycode").cast(pl.String) + "_" + pl.col("sitenum").cast(pl.String)
+             + "_" + pl.col("poc").cast(pl.String)).alias("monitor_id"))
+                     .filter(
+            pl.col("aqi").is_not_null())
+                     .with_columns(
+            pl.when(pl.col("parametername").str.contains("PM10"))
+            .then(pl.lit("PM10"))
+            .when(pl.col("parametername").str.contains("Carbon monoxide"))
+            .then(pl.lit("CO"))
+            .when(pl.col("parametername").str.contains("Ozone"))
+            .then(pl.lit("Ozone"))
+            .when(pl.col("parametername").str.contains("Nitrogen dioxide"))
+            .then(pl.lit("NO2"))
+            .otherwise(None)
+            .alias("pollutant_name"))
+                      .filter(
+            pl.col("pollutant_name").is_not_null())
+                     )
+
+        temp_aqi = (aqi_data
+                    .filter(
+            pl.col("cityname").is_in(["Chicago"]))
+                    .with_columns(
+            pl.col("aqi").mean().over(["date", "pollutant_name"]).alias("aqi_mean_chicago"),
+            pl.col("aqi").len().over(["date", "pollutant_name"]).alias("n"),)
+                    .filter(pl.col("n") == 1)
+                    .select("date", "aqi_mean_chicago", "pollutant_name")
+                    .sort("pollutant_name", "date"))
+
+        aqi_data = (aqi_data
+                    .with_columns(
+            pl.when(
+                (pl.col("pollutant_name") == "Ozone") & (pl.col("monitor_id").is_in(["31_64_1","31_7002_1"])))
+            .then(pl.lit(1))
+            .when(
+                (pl.col("pollutant_name") == "CO") & (
+                    pl.col("monitor_id").is_in(["31_3103_1","31_4002_1","31_6004_1","31_63_1"])))
+            .then(pl.lit(1))
+            .when(
+                (pl.col("pollutant_name") == "NO2") & (
+                    pl.col("monitor_id").is_in(["31_3103_1","31_4002_1","31_63_1"])))
+            .then(pl.lit(1))
+            .when(
+                (pl.col("pollutant_name") == "PM10") & (
+                    pl.col("monitor_id").is_in(["31_1016_3","31_22_3"])))
+            .then(pl.lit(1))
+            .otherwise(0)
+            .alias("keeplist"))
+                    .filter(pl.col("keeplist") == 1)
+                    .with_columns(
+            pl.col("aqi").mean().over(["date", "pollutant_name"]).alias("aqi_mean_sample"),
+            pl.col("aqi").len().over(["date", "pollutant_name"]).alias("n"))
+                    .filter(pl.col("n") == 1)
+                    .select("date", "aqi_mean_sample", "pollutant_name")
+                    .sort("pollutant_name", "date")
+                    )
+
 
 
 
@@ -522,7 +594,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor._extract_chicago_ozone()
+    preprocessor._merge_pollution_()
 
 
 
