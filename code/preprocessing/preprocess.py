@@ -675,7 +675,32 @@ class DataPreprocessor:
         #           )
 
         # NO2 --------------------------------------------------------------------------------------------------------
+        # no_data = (pl.read_csv(self.output_data_path / "chicago_no2_2000_2012_daily.csv")
+        #            .with_columns(
+        #     pl.col("date").str.to_datetime(format="%Y-%m-%d"))
+        #            .filter(
+        #     pl.col("monitor_id").is_in(["31_3103_1","31_4002_1","31_63_1"]))
+        #            )
+        #
+        # no_wide = (no_data
+        #            .select("avg_no2", "max_no2", "monitor_id", "date")
+        #            .pivot(
+        #     on="monitor_id", values=cs.contains("no"))
+        #            )
+        #
+        # avg_cols = no_wide.select(pl.col("^avg.*$")).columns
+        # no_out = (no_wide
+        #           .with_columns(
+        #     (pl.sum_horizontal([pl.col(col).is_not_null().cast(pl.Int64) for col in avg_cols]) / len(avg_cols))
+        #     .alias("monitor_pct_no2"))
+        #           .with_columns(
+        #     pl.mean_horizontal(pl.col("^avg.*$")).alias("avg_no2_mean"),
+        #     pl.mean_horizontal(pl.col("^max.*$")).alias("max_no2_mean"))
+        #           .select("avg_no2_mean", "max_no2_mean", "date", "monitor_pct_no2")
+        #           .sort("date")
+        #            )
 
+        # PM10 --------------------------------------------------------------------------------------------------------
 
 
 
