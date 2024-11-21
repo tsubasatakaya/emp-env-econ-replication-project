@@ -743,12 +743,71 @@ class DataPreprocessor:
 
         poll_data.write_csv(self.output_data_path / "chicago_pollution_2000_2012.csv")
 
+    def _extract_midwayohare_daily_weather(self):
+        ghcn_data = pl.read_csv(self.input_data_path / "chicago_midwayohare_ghcn_daily_1991_2012.csv")
+
+        ghcn_data = (ghcn_data
+                     .with_columns(
+            pl.col("strdate").cast(pl.String).str.to_datetime(format="%Y%m%d").dt.date().alias("date"))
+                     .with_columns(
+            pl.when(pl.col("qflag").is_not_null())  # != "" (empty string) in the original dataset
+            .then(None)
+            .otherwise(pl.col("value"))
+            .alias("value"))
+                     .drop("obstime", "mflag", "sflag", "qflag")
+                     )
+
+        ghcn_wide = (ghcn_data
+                     .sort("station_id", "date")
+                     .pivot(
+            on="element", values="value")
+                     .with_columns(
+            [(pl.col(col) / 10).alias(col) for col in ["PRCP", "TMAX", "TMIN"]])
+                     .with_columns(
+            cs.numeric().exclude("station_id", "strdate").round(1))
+                     .with_columns(
+            pl.when(pl.col("station_id") == "USW00094846")
+            .then(pl.lit("OHARE"))
+            .when(pl.col("station_id") == "USW00014819")
+            .then(pl.lit("MIDWAY"))
+            .otherwise(pl.lit(""))
+            .alias("weather_airport"))
+                     .drop("station_id")
+                     )
+
+        ghcn_temp = (ghcn_wide
+                     .drop("strdate")
+                     .pivot(
+            on="weather_airport", values=cs.numeric())
+                     .with_columns(
+            pl.col("date").dt.month().alias("month"),
+            pl.col("date").dt.day().alias("day"))
+                     )
+
+        ghcn_doy_mean = (ghcn_temp
+                         .filter(
+            pl.col("date").dt.year() < 2001)
+                         .group_by("month", "day")
+                         .agg(
+            [pl.col(f"{col}_MIDWAY").mean().alias(f"mean_{col}_1991_2000") for col in ["TMAX", "TMIN", "PRCP"]])
+                         )
+
+        ghcn_out = (ghcn_temp
+                    .join(
+            ghcn_doy_mean, on=["month", "day"], how="left", validate="m:1")
+                    .drop("day", "month",)
+                    .filter(pl.col("date").dt.year() < 2001))
+
+        ghcn_out.write_csv(self.output_data_path / "chicago_midwayohare_daily_weather.csv")
+
+
+
 if __name__ == '__main__':
     source_path = Path("replication_package")
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor._merge_pollution()
+    preprocessor._extract_midwayohare_daily_weather()
 
 
 
