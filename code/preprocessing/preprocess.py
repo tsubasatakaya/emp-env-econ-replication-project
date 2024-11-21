@@ -608,37 +608,73 @@ class DataPreprocessor:
         #            )
 
         # OZONE ---------------------------------------------------------------------------------------------------------
-        ozone_data = (pl.read_csv(self.output_data_path / "chicago_ozone_2000_2012_daily.csv")
-                      .with_columns(
-            pl.col("date").str.to_datetime(format="%Y-%m-%d"))
-                      .with_columns(
-            pl.col("date").dt.year().alias("year")
-        )
-                      )
+        # ozone_data = (pl.read_csv(self.output_data_path / "chicago_ozone_2000_2012_daily.csv")
+        #               .with_columns(
+        #     pl.col("date").str.to_datetime(format="%Y-%m-%d"))
+        #               .with_columns(
+        #     pl.col("date").dt.year().alias("year")
+        # )
+        #               )
+        #
+        # ozone_data = (ozone_data
+        #               .filter(
+        #     pl.col("monitor_id").is_in(["31_1003_2", "31_1601_1", "31_1_1", "31_32_1", "31_4002_1",
+        #                                 "31_4007_1", "31_4201_1", "31_64_1", "31_7002_1", "31_72_1", "31_76_1"]))
+        #               .select("avg_ozone", "max_ozone", "monitor_id", "date")
+        #               .sort("monitor_id", "date")
+        #               )
+        #
+        # ozone_out = (ozone_data
+        #              .pivot(
+        #     on="monitor_id", values=cs.contains("ozone"))
+        #              .with_columns(
+        #     pl.mean_horizontal(pl.col("^avg.*31_(64_1|7002_1)$")).alias("avg_ozone_mean"),
+        #     pl.mean_horizontal(pl.col("^max.*31_(64_1|7002_1)$")).alias("max_ozone_mean"))
+        #              .with_columns(
+        #     ((pl.col("avg_ozone_31_64_1").is_not_null().cast(pl.Int64) +
+        #       pl.col("avg_ozone_31_7002_1").is_not_null().cast(pl.Int64)) / 2
+        #      ).alias("monitor_pct_ozone"))
+        #              .sort("date")
+        #              .select("avg_ozone_mean", "max_ozone_mean", "date", "monitor_pct_ozone")
+        #              )
 
-        ozone_data = (ozone_data
-                      .filter(
-            pl.col("monitor_id").is_in(["31_1003_2", "31_1601_1", "31_1_1", "31_32_1", "31_4002_1",
-                                        "31_4007_1", "31_4201_1", "31_64_1", "31_7002_1", "31_72_1", "31_76_1"]))
-                      .select("avg_ozone", "max_ozone", "monitor_id", "date")
-                      .sort("monitor_id", "date")
-                      )
+        # CO ---------------------------------------------------------------------------------------------------------
+        # co_data = (pl.read_csv(self.output_data_path / "chicago_co_2000_2012_daily.csv")
+        #            .with_columns(
+        #     pl.col("date").str.to_datetime(format="%Y-%m-%d"))
+        #            .filter(
+        #     pl.col("monitor_id").is_in(["31_3103_1","31_4002_1","31_6004_1","31_63_1"]))
+        #            )
+        #
+        # co_wide = (co_data
+        #            .select("avg_co", "max_co", "monitor_id", "date")
+        #            .pivot(
+        #     on="monitor_id", values=cs.contains("co"))
+        #            )
+        # avg_cols = co_wide.select(pl.col("^avg.*$")).columns
+        # co_temp = (co_wide
+        #            .with_columns(
+        #     (pl.sum_horizontal([pl.col(col).is_not_null().cast(pl.Int64) for col in avg_cols]) / len(avg_cols))
+        #     .alias("monitor_pct_co"))
+        #            .with_columns(
+        #     pl.mean_horizontal(pl.col("^avg.*$")).alias("avg_co_mean"),
+        #     pl.mean_horizontal(pl.col("^max.*$")).alias("max_co_mean"))
+        #            .drop("avg_co_31_6004_1")  # TODO: author did not drop max_co_31_6004_1
+        #            )
+        #
+        # avg_cols_drop_290 = co_temp.select(pl.col("^avg.*$").exclude("avg_co_mean")).columns
+        # co_out = (co_temp
+        #           .with_columns(
+        #     (pl.sum_horizontal([pl.col(col).is_not_null().cast(pl.Int64) for col in avg_cols_drop_290]) / len(avg_cols_drop_290))
+        #     .alias("monitor_pct_co_drop_290"))
+        #           .with_columns(
+        #     pl.mean_horizontal(pl.col("^avg.*$")).alias("avg_co_mean_drop_290"),
+        #     pl.mean_horizontal(pl.col("^max.*$")).alias("max_co_mean_drop_290"))
+        #           .select(pl.col("^avg_co_mean.*$"), pl.col("^max_co_mean.*$"), "date", pl.col("^monitor_pct_co.*$"))
+        #           .sort("date")
+        #           )
 
-        ozone_out = (ozone_data
-                     .pivot(
-            on="monitor_id", values=cs.contains("ozone"))
-                     .with_columns(
-            pl.mean_horizontal(pl.col("^avg.*31_(64_1|7002_1)$")).alias("avg_ozone_mean"),
-            pl.mean_horizontal(pl.col("^max.*31_(64_1|7002_1)$")).alias("max_ozone_mean"))
-                     .with_columns(
-            ((pl.col("avg_ozone_31_64_1").is_not_null().cast(pl.Int64) +
-              pl.col("avg_ozone_31_7002_1").is_not_null().cast(pl.Int64)) / 2
-             ).alias("monitor_pct_ozone"))
-                     .sort("date")
-                     .select("avg_ozone_mean", "max_ozone_mean", "date", "monitor_pct_ozone")
-                     )
-
-
+        # NO2 --------------------------------------------------------------------------------------------------------
 
 
 
