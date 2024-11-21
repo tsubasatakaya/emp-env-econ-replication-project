@@ -712,8 +712,22 @@ class DataPreprocessor:
                    .rename(
             {"max24hr_pm10_derived": "max_pm10",
              "avg24hr_pm10_derived": "avg_pm10",})
-                   .select("avg_pm10", "max_pm10", "monitor_id", "date"))
+                   .select("avg_pm10", "max_pm10", "monitor_id", "date")
+                   .pivot(
+            on="monitor_id", values=cs.contains("pm10"))
+                   )
 
+        avg_cols = pm_wide.select(pl.col("^avg.*$")).columns
+        pm_out = (pm_wide
+                  .with_columns(
+            (pl.sum_horizontal([pl.col(col).is_not_null().cast(pl.Int64) for col in avg_cols]) / len(avg_cols))
+            .alias("monitor_pct_pm10"))
+                  .with_columns(
+            pl.mean_horizontal(pl.col("^avg.*$")).alias("avg_pm10_mean"),
+            pl.mean_horizontal(pl.col("^max.*$")).alias("max_pm10_mean"),)
+                  .select("avg_pm10_mean", "max_pm10_mean", "date", "monitor_pct_pm10")
+                  .sort("date")
+                  )
 
 
 
