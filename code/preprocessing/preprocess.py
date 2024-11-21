@@ -701,7 +701,18 @@ class DataPreprocessor:
         #            )
 
         # PM10 --------------------------------------------------------------------------------------------------------
+        pm_data = (pl.read_csv(self.output_data_path / "chicago_pm10_2000_2012_daily.csv")
+                   .with_columns(
+            pl.col("date").str.to_datetime(format="%Y-%m-%d"))
+                   .filter(
+            pl.col("monitor_id").is_in(["31_1016_3","31_22_3"]))
+                   )
 
+        pm_wide = (pm_data
+                   .rename(
+            {"max24hr_pm10_derived": "max_pm10",
+             "avg24hr_pm10_derived": "avg_pm10",})
+                   .select("avg_pm10", "max_pm10", "monitor_id", "date"))
 
 
 
