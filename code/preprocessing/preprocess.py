@@ -521,14 +521,7 @@ class DataPreprocessor:
 
         daily_ozone_data.write_csv(self.output_data_path/"chicago_ozone_2000_2012_daily.csv")
 
-    def process_all_pollution_data(self):
-        self._extract_chicago_aqi()
-        self._extract_chicago_co()
-        self._extract_chicago_pm10()
-        self._extract_chicago_no2()
-        self._extract_chicago_ozone()
-
-    def merge_pollution(self):
+    def _merge_pollution(self):
         # AQI ---------------------------------------------------------------------------------------------------------
         aqi_data = (pl.read_csv(self.output_data_path/"chicago_aqi_2000_2015.csv")
                     .with_columns(
@@ -749,6 +742,14 @@ class DataPreprocessor:
                      )
 
         poll_data.write_csv(self.output_data_path / "chicago_pollution_2000_2012.csv")
+
+    def process_all_pollution_data(self):
+        self._extract_chicago_aqi()
+        self._extract_chicago_co()
+        self._extract_chicago_pm10()
+        self._extract_chicago_no2()
+        self._extract_chicago_ozone()
+        self._merge_pollution()
 
     def _extract_midwayohare_daily_weather(self):
         ghcn_data = pl.read_csv(self.input_data_path / "chicago_midwayohare_ghcn_daily_1991_2012.csv")
@@ -1015,8 +1016,8 @@ class DataPreprocessor:
     def create_citylevel_dataset(self, process_raw_data=True):
         if process_raw_data:
             self.process_all_crime_data()
-            self.process_all_pollution_data()
-            self.process_all_weather_data()
+            # self.process_all_pollution_data()
+            # self.process_all_weather_data()
 
         weather_daily_data = (pl.scan_csv(self.output_data_path / "chicago_weather_daily_from_hourly.csv")
                               .with_columns(
@@ -1072,6 +1073,14 @@ class DataPreprocessor:
             (pl.col("Assault") + pl.col("Battery")).alias("assault_battery"))
                       )
 
+        data = (crime_wide
+                .join(
+            weather_daily_data, on=["date"], how="inner", validate="1:1")
+                .filter(
+            pl.col("date").dt.year().is_between(2001, 2012, closed="both"))
+
+                )
+
 
 
 
@@ -1083,8 +1092,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    # preprocessor.create_citylevel_dataset(process_raw_data=False)
-    preprocessor._extract_crime_data()
+    preprocessor.create_citylevel_dataset(process_raw_data=True)
 
 
 
