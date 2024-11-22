@@ -799,7 +799,7 @@ class DataPreprocessor:
                     .join(
             ghcn_doy_mean, on=["month", "day"], how="left", validate="m:1")
                     .drop("day", "month",)
-                    .filter(pl.col("date").dt.year() < 2001))
+                    .filter(pl.col("date").dt.year() >= 2001))
 
         ghcn_out.write_csv(self.output_data_path / "chicago_midwayohare_daily_weather.csv")
 
@@ -943,7 +943,7 @@ class DataPreprocessor:
         weather_data = (weather_data
                         .with_columns(
             pl.when(pl.col("sealevel_pressure_qual").cast(pl.String).is_in(["6", "7", "3", "2"]) |
-                    (pl.col("sealevel_pressure") == 9999))
+                    (pl.col("sealevel_pressure") == 99999))
             .then(None)
             .otherwise(pl.col("sealevel_pressure"))
             .alias("sealevel_pressure_new"))
@@ -1010,10 +1010,32 @@ class DataPreprocessor:
 
     def create_citylevel_dataset(self, process_raw_data=True):
         if process_raw_data:
-            self.process_pollution_data()
+            # self.process_pollution_data()
             self.process_weather_data()
 
-        weather_daily_data = pl.read_csv(self.output_data_path / "chicago_weather_daily_from_hourly.csv")
+        weather_daily_data = (pl.scan_csv(self.output_data_path / "chicago_weather_daily_from_hourly.csv")
+                              .with_columns(
+            pl.col("date").str.to_date(),
+            pl.col("sealevel_pressure_avg").cast(pl.Float64))
+                              .filter(
+            # Keep only midway wind data
+            pl.col("usaf") == 725340)
+                              .join(
+            (pl.scan_csv(self.output_data_path / "midway_daily_sky_cover.csv")
+             .select("date", "avg_sky_cover")
+             .with_columns(pl.col("date").str.to_date())),
+            on="date", how="inner", validate="1:1",)
+            #                   .join(
+            # (pl.scan_csv(self.output_data_path / "chicago_midwayohare_daily_weather.csv")
+            #  .select("date", cs.contains("MIDWAY"), cs.contains("mean"))
+            #  .with_columns(pl.col("date").str.to_date())),
+            # on="date", how="inner", validate="1:m")
+                              .collect()
+                              )
+
+        data = pl.read_csv(self.output_data_path / "chicago_midwayohare_daily_weather.csv")
+
+
 
 
 
@@ -1024,7 +1046,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor.create_citylevel_dataset()
+    preprocessor.create_citylevel_dataset(process_raw_data=False)
 
 
 
