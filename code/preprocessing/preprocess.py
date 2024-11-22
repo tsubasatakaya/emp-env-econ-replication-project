@@ -43,8 +43,8 @@ class DataPreprocessor:
             .alias("violent"), )  # homicide, offense involving children/sexual assault, assault, battery/ritualism,
                       # assault/stalking, ritualism/battery/domestic violence
                       .with_columns(
-            pl.when(pl.col("fbi_code") == "08")
-            .then(pl.lit("09"))
+            pl.when(pl.col("fbi_code") == "09")
+            .then(pl.lit("08"))
             .otherwise(pl.col("fbi_code"))
             .alias("fbi_code"))
                       .drop("string_date")
@@ -1014,8 +1014,9 @@ class DataPreprocessor:
 
     def create_citylevel_dataset(self, process_raw_data=True):
         if process_raw_data:
-            # self.process_pollution_data()
-            self.process_weather_data()
+            self.process_all_crime_data()
+            self.process_all_pollution_data()
+            self.process_all_weather_data()
 
         weather_daily_data = (pl.scan_csv(self.output_data_path / "chicago_weather_daily_from_hourly.csv")
                               .with_columns(
@@ -1039,7 +1040,37 @@ class DataPreprocessor:
                               .collect()
                               )
 
-        data = (pl.read_csv(self.output_data_path / "chicago_part1_crimes.csv"))
+        crime_data = (pl.read_csv(self.output_data_path / "chicago_part1_crimes.csv")
+                      .with_columns(pl.col("date").str.to_date())
+                      .group_by("date", "fbi_code")
+                      .agg(pl.len().alias("crimesNarrow"))
+                      .select("date", "fbi_code", "crimesNarrow")
+                      .unique())
+        fbi_code_list = crime_data.select("fbi_code").unique().to_series().to_list()
+        crime_wide = (crime_data
+                      .pivot(
+            on="fbi_code", values="crimesNarrow")
+                      .rename({col: f"crimesNarrow_{col}" for col in fbi_code_list})
+                      .with_columns(
+            [pl.when(pl.col(f"crimesNarrow_{col}").is_null())
+             .then(pl.lit(0))
+             .otherwise(pl.col(f"crimesNarrow_{col}"))
+             .alias(f"crimesNarrow_{col}") for col in fbi_code_list])
+                      .rename(
+            {"crimesNarrow_01A": "Homicide",
+             "crimesNarrow_02": "ForcibleRape",
+             "crimesNarrow_03": "Robbery",
+             "crimesNarrow_04A": "Assault",
+             "crimesNarrow_04B": "Battery",
+             "crimesNarrow_05": "Burglary",
+             "crimesNarrow_06": "Larceny",
+             "crimesNarrow_07": "MVT",
+             "crimesNarrow_08": "Arson",})
+                      .with_columns(
+            (pl.col("Homicide") + pl.col("ForcibleRape") + pl.col("Assault") + pl.col("Battery")).alias("total_violent"),
+            (pl.col("Robbery") + pl.col("Burglary") + pl.col("Larceny") + pl.col("MVT") + pl.col("Arson")).alias("total_property"),
+            (pl.col("Assault") + pl.col("Battery")).alias("assault_battery"))
+                      )
 
 
 
@@ -1052,8 +1083,8 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor.create_citylevel_dataset(process_raw_data=False)
-
+    # preprocessor.create_citylevel_dataset(process_raw_data=False)
+    preprocessor._extract_crime_data()
 
 
 
