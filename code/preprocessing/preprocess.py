@@ -1015,8 +1015,8 @@ class DataPreprocessor:
 
     def create_citylevel_dataset(self, process_raw_data=True):
         if process_raw_data:
-            self.process_all_crime_data()
-            # self.process_all_pollution_data()
+            # self.process_all_crime_data()
+            self.process_all_pollution_data()
             # self.process_all_weather_data()
 
         weather_daily_data = (pl.scan_csv(self.output_data_path / "chicago_weather_daily_from_hourly.csv")
@@ -1078,7 +1078,14 @@ class DataPreprocessor:
             weather_daily_data, on=["date"], how="inner", validate="1:1")
                 .filter(
             pl.col("date").dt.year().is_between(2001, 2012, closed="both"))
-
+                .join(
+            (pl.read_csv(self.output_data_path / "chicago_pollution_2000_2012.csv")
+             .with_columns(pl.col("date").str.to_date())),
+            on="date", how="inner", validate="1:1",)
+                .filter(
+            pl.col("date").dt.year().is_between(2001, 2012, closed="both"))
+                .with_columns(
+            (pl.col("tmax") / 10 - pl.col("TMAX_MIDWAY")).abs().alias("diff"))
                 )
 
 
