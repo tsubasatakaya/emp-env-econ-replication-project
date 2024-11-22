@@ -805,6 +805,33 @@ class DataPreprocessor:
         hourly_weather_data = pl.from_pandas(hourly_weather_data)
         hourly_weather_data.write_csv(self.output_data_path/"chicago_hourly_weather_stations.csv")
 
+    def _generate_weather_variables(self):
+        weather_data = (pl.scan_csv(self.output_data_path / "chicago_hourly_weather_stations.csv",
+                                    schema_overrides={col: pl.String for col in ["wind_speed_qual", "wind_angle_qual"]})
+                        .select("usaf", "wban", "month", "day", "year",  "hour", "min", "latitude", "longitude",
+                                "wind_angle", "wind_angle_qual", "wind_obs_type", "wind_speed", "wind_speed_qual",
+                                "temp", "temp_qual", "dewpoint", "dewpoint_qual", "sealevel_pressure",
+                                "sealevel_pressure_qual", "stationname")
+                        .collect())
+
+        weather_data = (weather_data
+                        .with_columns(
+            pl.when(
+                (pl.col("wind_speed") == 9999) | ((pl.col("wind_angle") == 999) & (pl.col("wind_speed") != 0)))
+            .then(None)
+            .otherwise(pl.col("wind_speed"))
+            .alias("wind_speed"))
+                        .with_columns(
+            pl.when(
+                (pl.col("wind_speed").is_null()) | ((pl.col("wind_angle") == 999) & pl.col("wind_speed") != 0))
+            .then(None)
+            .when(pl.col("wind_speed") == 0)
+            .then(pl.lit(0))
+            .otherwise(pl.col("wind_angle"))
+            .alias("wind_angle"))
+                        .filter(
+            pl.col("wind_speed_qual").is_in(["1", "5", "9"]) & pl.col("wind_angle_qual").is_in(["1", "5", "9"]))
+                        )
 
 
 
@@ -813,7 +840,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor._extract_midwayohare_daily_weather()
+    preprocessor._generate_weather_variables()
 
 
 
