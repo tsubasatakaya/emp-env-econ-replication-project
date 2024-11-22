@@ -800,6 +800,12 @@ class DataPreprocessor:
 
         ghcn_out.write_csv(self.output_data_path / "chicago_midwayohare_daily_weather.csv")
 
+    def _extract_chicago_hourly_weather(self):
+        hourly_weather_data = pd.read_stata(self.input_data_path/"chicago_hourly_weather_stations.dta")
+        hourly_weather_data = pl.from_pandas(hourly_weather_data)
+        hourly_weather_data.write_csv(self.output_data_path/"chicago_hourly_weather_stations.csv")
+
+
 
 
 if __name__ == '__main__':
