@@ -904,6 +904,25 @@ class DataPreprocessor:
             pl.col("avg_wind_speed").pow(3).alias("wind_power"))
                            )
 
+        weather_data = (weather_data
+                        .with_columns(
+            pl.when(pl.col("temp_qual").is_in(["6", "7", "3", "2"]) | (pl.col("temp") == 9999))
+            .then(None)
+            .otherwise(pl.col("temp"))
+            .alias("temp_new"))
+                        )
+
+        temp_daily_data = (weather_data
+                           .group_by("usaf", "wban", "date")
+                           .agg(
+            pl.col("temp_new").max().alias("tmax"),
+            pl.col("temp_new").mean().alias("tavg"),
+            pl.col("temp_new").min().alias("tmin"),
+            pl.col("temp_new").is_not_null().cast(pl.Int64).sum().alias("totobs"))
+                           .with_columns(
+            (pl.col("totobs") < 18).alias("tempdataflag"))
+                           )
+
 
 
 
