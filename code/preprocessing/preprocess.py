@@ -1006,7 +1006,7 @@ class DataPreprocessor:
 
         sky_daily_data.write_csv(self.output_data_path / "midway_daily_sky_cover.csv")
 
-    def process_weather_data(self):
+    def process_all_weather_data(self):
         self._extract_midwayohare_daily_weather()
         self._extract_chicago_hourly_weather()
         self._generate_weather_variables()
