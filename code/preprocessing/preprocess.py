@@ -819,6 +819,7 @@ class DataPreprocessor:
              + "-" + pl.col("day").cast(pl.String)).str.to_date(format="%Y-%m-%d").alias("date"))
                         .collect())
 
+        # Wind --------------------------------------------------------------------------------------------------------
         weather_data = (weather_data
                         .with_columns(
             pl.when(
@@ -853,8 +854,6 @@ class DataPreprocessor:
             (pl.col("wind_speed").pow(3) * pl.col("ywind")).alias("ywind_power"))
                         .with_columns(
             (pl.col("wind_speed").is_not_null() & pl.col("wind_angle").is_not_null()).cast(pl.Int64).alias("windobsind"))
-                        .with_columns(
-            pl.col("windobsind").sum().over(["usaf", "wban", "date"]).alias("windobs"))
                         )
 
         wind_daily_data = (weather_data
@@ -866,7 +865,8 @@ class DataPreprocessor:
             pl.col("ywind").mean().alias("ywind_avg"),
             pl.col("ywind_speed").mean().alias("ywind_speed_avg"),
             pl.col("ywind_power").mean().alias("ywind_power_avg"),
-            pl.col("wind_speed").mean().alias("avg_wind_speed"))
+            pl.col("wind_speed").mean().alias("avg_wind_speed"),
+            pl.col("windobsind").sum().alias("windobs"))
                            .with_columns(
             # Generate norms
             (pl.col("xwind_speed_avg").pow(2) + pl.col("ywind_speed_avg").pow(2)).sqrt().alias("speed_norm"),
@@ -903,7 +903,7 @@ class DataPreprocessor:
             # Generate wind power
             pl.col("avg_wind_speed").pow(3).alias("wind_power"))
                            )
-
+        # Temperature -------------------------------------------------------------------------------------------------
         weather_data = (weather_data
                         .with_columns(
             pl.when(pl.col("temp_qual").is_in(["6", "7", "3", "2"]) | (pl.col("temp") == 9999))
@@ -922,6 +922,59 @@ class DataPreprocessor:
                            .with_columns(
             (pl.col("totobs") < 18).alias("tempdataflag"))
                            )
+
+        # Dew point -------------------------------------------------------------------------------------------------
+        weather_data = (weather_data
+                        .with_columns(
+            pl.when(pl.col("dewpoint_qual").is_in(["6", "7", "3", "2"]) | (pl.col("dewpoint") == 9999))
+            .then(None)
+            .otherwise(pl.col("dewpoint"))
+            .alias("dewpoint_new")
+        ))
+
+        dew_daily_data = (weather_data
+                          .group_by("usaf", "wban", "date")
+                          .agg(
+            pl.col("dewpoint_new").mean().alias("dew_point_avg"),)
+                          )
+
+        # Sea-level pressure ------------------------------------------------------------------------------------------
+        weather_data = (weather_data
+                        .with_columns(
+            pl.when(pl.col("sealevel_pressure_qual").cast(pl.String).is_in(["6", "7", "3", "2"]) |
+                    (pl.col("sealevel_pressure") == 9999))
+            .then(None)
+            .otherwise(pl.col("sealevel_pressure"))
+            .alias("sealevel_pressure_new"))
+                        )
+
+        sealevel_daily_data = (weather_data
+                               .group_by("usaf", "wban", "date")
+                               .agg(
+            pl.col("sealevel_pressure_new").mean().alias("sealevel_pressure_avg"),)
+                               )
+
+        # Merge all daily data
+        weather_daily_data = (wind_daily_data
+                              .join(
+            temp_daily_data, on=["usaf", "wban", "date"], how="full", validate="1:1")
+                              .drop(cs.ends_with("right"))
+                              .join(
+            dew_daily_data, on=["usaf", "wban", "date"], how="full", validate="1:1")
+                              .drop(cs.ends_with("right"))
+                              .join(
+            sealevel_daily_data, on=["usaf", "wban", "date"], how="full", validate="1:1")
+                              .select("usaf", "wban", "date", "wind_dir_avg", "wind_speed_dir_avg",
+                                      "wind_power_dir_avg", "avg_wind_speed", "windobs", "speed_norm",
+                                      "power_norm", "calmday", "tempdataflag", "tmax", "tavg", "tmin",
+                                      "dew_point_avg", "sealevel_pressure_avg")
+                              .sort("usaf", "wban", "date")
+                              )
+
+        # weather_daily_data.filter(pl.all_horizontal(pl.col("usaf", "date").is_duplicated())
+        #                           ).sort("usaf", "date")
+
+        weather_daily_data.write_csv(self.output_data_path / "chicago_weather_daily_from_hourly.csv")
 
 
 
