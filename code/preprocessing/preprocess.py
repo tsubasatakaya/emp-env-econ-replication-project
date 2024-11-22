@@ -1025,15 +1025,17 @@ class DataPreprocessor:
              .select("date", "avg_sky_cover")
              .with_columns(pl.col("date").str.to_date())),
             on="date", how="inner", validate="1:1",)
-            #                   .join(
-            # (pl.scan_csv(self.output_data_path / "chicago_midwayohare_daily_weather.csv")
-            #  .select("date", cs.contains("MIDWAY"), cs.contains("mean"))
-            #  .with_columns(pl.col("date").str.to_date())),
-            # on="date", how="inner", validate="1:m")
+                              .join(
+            (pl.scan_csv(self.output_data_path / "chicago_midwayohare_daily_weather.csv")
+             .select("date", cs.contains("MIDWAY"), cs.contains("mean"))
+             .with_columns(pl.col("date").str.to_date())),
+            on="date", how="inner", validate="1:m")
+                              .filter(
+            pl.col("date").dt.year().is_between(2001, 2012, closed="both"))
                               .collect()
                               )
 
-        data = pl.read_csv(self.output_data_path / "chicago_midwayohare_daily_weather.csv")
+        data = (pl.read_csv(self.output_data_path / "chicago_part1_crimes.csv"))
 
 
 
