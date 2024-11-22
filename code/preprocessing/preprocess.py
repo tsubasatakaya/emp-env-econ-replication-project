@@ -814,6 +814,9 @@ class DataPreprocessor:
                                 "wind_angle", "wind_angle_qual", "wind_obs_type", "wind_speed", "wind_speed_qual",
                                 "temp", "temp_qual", "dewpoint", "dewpoint_qual", "sealevel_pressure",
                                 "sealevel_pressure_qual", "stationname")
+                        .with_columns(
+            (pl.col("year").cast(pl.String) + "-" + pl.col("month").cast(pl.String)
+             + "-" + pl.col("day").cast(pl.String)).str.to_date(format="%Y-%m-%d").alias("date"))
                         .collect())
 
         weather_data = (weather_data
@@ -833,7 +836,75 @@ class DataPreprocessor:
             .alias("wind_angle"))
                         .filter(
             pl.col("wind_speed_qual").is_in(["1", "5", "9"]) & pl.col("wind_angle_qual").is_in(["1", "5", "9"]))
+                        .with_columns(
+            # Convert degrees to radians
+            pl.col("wind_angle").radians().alias("wind_angle_radians"))
+                        .with_columns(
+            # X Y wind vector components
+            pl.col("wind_angle_radians").cos().alias("xwind"),
+            pl.col("wind_angle_radians").sin().alias("ywind"),)
+                        .with_columns(
+            # Weight by speed
+            (pl.col("wind_speed") * pl.col("xwind")).alias("xwind_speed"),
+            (pl.col("wind_speed") * pl.col("ywind")).alias("ywind_speed"))
+                        .with_columns(
+            # Weighted proportional to power
+            (pl.col("wind_speed").pow(3) * pl.col("xwind")).alias("xwind_power"),
+            (pl.col("wind_speed").pow(3) * pl.col("ywind")).alias("ywind_power"))
+                        .with_columns(
+            (pl.col("wind_speed").is_not_null() & pl.col("wind_angle").is_not_null()).cast(pl.Int64).alias("windobsind"))
+                        .with_columns(
+            pl.col("windobsind").sum().over(["usaf", "wban", "date"]).alias("windobs"))
                         )
+
+        wind_daily_data = (weather_data
+                           .group_by("usaf", "wban", "date")
+                           .agg(
+            pl.col("xwind").mean().alias("xwind_avg"),
+            pl.col("xwind_speed").mean().alias("xwind_speed_avg"),
+            pl.col("xwind_power").mean().alias("xwind_power_avg"),
+            pl.col("ywind").mean().alias("ywind_avg"),
+            pl.col("ywind_speed").mean().alias("ywind_speed_avg"),
+            pl.col("ywind_power").mean().alias("ywind_power_avg"),
+            pl.col("wind_speed").mean().alias("avg_wind_speed"))
+                           .with_columns(
+            # Generate norms
+            (pl.col("xwind_speed_avg").pow(2) + pl.col("ywind_speed_avg").pow(2)).sqrt().alias("speed_norm"),
+            (
+                (pl.col("xwind_power_avg").pow(2) + pl.col("ywind_power_avg").pow(2)).sqrt()
+            ).pow(1/3).alias("power_norm"))
+                           .with_columns(
+            # Rescale power norm
+            (pl.col("power_norm") / 1000).alias("power_norm"))
+                           .with_columns(
+            # Generate average angles
+            pl.when(pl.col("ywind_avg") < 0)
+            .then(pl.arctan2("ywind_avg", "xwind_avg") + 2 * np.pi)
+            .when(pl.col("ywind_avg") >= 0)
+            .then(pl.arctan2("ywind_avg", "xwind_avg"))
+            .otherwise(None)
+            .alias("wind_dir_avg"),
+            pl.when(pl.col("ywind_speed_avg") < 0)
+            .then(pl.arctan2("ywind_speed_avg", "xwind_speed_avg") + 2 * np.pi)
+            .when(pl.col("ywind_speed_avg") >= 0)
+            .then(pl.arctan2("ywind_speed_avg", "xwind_speed_avg"))
+            .otherwise(None)
+            .alias("wind_speed_dir_avg"),
+            pl.when(pl.col("ywind_power_avg") < 0)
+            .then(pl.arctan2("ywind_power_avg", "xwind_power_avg") + 2 * np.pi)
+            .when(pl.col("ywind_power_avg") >= 0)
+            .then(pl.arctan2("ywind_power_avg", "xwind_power_avg"))
+            .otherwise(None)
+            .alias("wind_power_dir_avg"),
+
+            # Generate calm dummy
+            (pl.col("speed_norm") == 0).alias("calmday"),
+
+            # Generate wind power
+            pl.col("avg_wind_speed").pow(3).alias("wind_power"))
+                           )
+
+
 
 
 
@@ -842,7 +913,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor._extract_crime_interstate_distance()
+    preprocessor._generate_weather_variables()
 
 
 
