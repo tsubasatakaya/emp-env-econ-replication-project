@@ -138,6 +138,10 @@ class DataPreprocessor:
 
         crime_interstate_wide.write_csv(self.output_data_path/"crime_road_distances.csv")
 
+    def process_all_crime_data(self):
+        self._extract_crime_data()
+        self._extract_crime_interstate_distance()
+
     def _extract_chicago_aqi(self):
         aqi_data = pd.read_stata(self.input_data_path/"chicago_aqi_2000_2015.dta")
         aqi_data = pl.from_pandas(aqi_data)
