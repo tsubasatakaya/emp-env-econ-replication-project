@@ -84,6 +84,8 @@ class DataPreprocessor:
         crime_interstate_wide = (crime_interstate_wide
                                  .with_columns(
             [(pl.col(f"near_angle_{i}") % 360)for i in [1, 2]])
+                                 .with_columns(
+            [pl.col(f"near_angle_{i}").radians().alias(f"near_dir_{i}") for i in [1, 2]])
                                  )
 
         crime_interstate_wide = (crime_interstate_wide
@@ -840,7 +842,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor._generate_weather_variables()
+    preprocessor._extract_crime_interstate_distance()
 
 
 
