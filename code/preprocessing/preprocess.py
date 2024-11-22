@@ -1,4 +1,5 @@
 import os
+from email.policy import strict
 from pathlib import Path
 
 import pandas as pd
@@ -976,6 +977,44 @@ class DataPreprocessor:
 
         weather_daily_data.write_csv(self.output_data_path / "chicago_weather_daily_from_hourly.csv")
 
+    def _read_midway_skycover(self):
+        sky_data = (pl.read_csv(self.input_data_path / "sky_cover_MDW.txt",
+                                separator="\t",
+                                skip_rows=17)
+                    .rename({"mm/dd/yyyy": "date",
+                             "Sky Cov": "value"})
+                    .with_columns(pl.col("value").cast(pl.Float64, strict=False)))
+
+        sky_data = (sky_data
+                    .with_columns(
+            pl.col("value").is_null().cast(pl.Int64).sum().over("date").alias("missing"))
+                    .filter(pl.col("missing") <= 6)
+                    )
+
+        sky_daily_data = (sky_data
+                          .group_by("date")
+                          .agg(
+            pl.col("value").mean().alias("avg_sky_cover"))
+                          .with_columns(
+            pl.col("date").str.to_date(format="%m/%d/%Y"))
+                          .sort("date")
+                          )
+
+        sky_daily_data.write_csv(self.output_data_path / "midway_daily_sky_cover.csv")
+
+    def process_weather_data(self):
+        self._extract_midwayohare_daily_weather()
+        self._extract_chicago_hourly_weather()
+        self._generate_weather_variables()
+        self._read_midway_skycover()
+
+    def create_citylevel_dataset(self, process_raw_data=True):
+        if process_raw_data:
+            self.process_pollution_data()
+            self.process_weather_data()
+
+        weather_daily_data = pl.read_csv(self.output_data_path / "chicago_weather_daily_from_hourly.csv")
+
 
 
 
@@ -985,7 +1024,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor._generate_weather_variables()
+    preprocessor.create_citylevel_dataset()
 
 
 
