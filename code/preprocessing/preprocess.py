@@ -1015,9 +1015,9 @@ class DataPreprocessor:
 
     def create_citylevel_dataset(self, process_raw_data=True):
         if process_raw_data:
-            # self.process_all_crime_data()
+            self.process_all_crime_data()
             self.process_all_pollution_data()
-            # self.process_all_weather_data()
+            self.process_all_weather_data()
 
         weather_daily_data = (pl.scan_csv(self.output_data_path / "chicago_weather_daily_from_hourly.csv")
                               .with_columns(
@@ -1073,22 +1073,114 @@ class DataPreprocessor:
             (pl.col("Assault") + pl.col("Battery")).alias("assault_battery"))
                       )
 
-        data = (crime_wide
-                .join(
+        city_data = (crime_wide
+                    .join(
             weather_daily_data, on=["date"], how="inner", validate="1:1")
-                .filter(
+                    .filter(
             pl.col("date").dt.year().is_between(2001, 2012, closed="both"))
-                .join(
+                    .join(
             (pl.read_csv(self.output_data_path / "chicago_pollution_2000_2012.csv")
-             .with_columns(pl.col("date").str.to_date())),
+                    .with_columns(pl.col("date").str.to_date())),
             on="date", how="inner", validate="1:1",)
-                .filter(
+                   .filter(
             pl.col("date").dt.year().is_between(2001, 2012, closed="both"))
-                .with_columns(
+                   .with_columns(
             (pl.col("tmax") / 10 - pl.col("TMAX_MIDWAY")).abs().alias("diff"))
+                   )
+
+        city_data = (city_data
+                     .with_columns(
+            pl.col("TMAX_MIDWAY").clip(-6, 33).alias("temp_maxT"))
+                     .with_columns(
+            # group temperatures
+            (pl.col("temp_maxT") / 3).floor().alias("max_temp_bins"))
+                    .with_columns(
+            (pl.col("max_temp_bins") - pl.col("max_temp_bins").min()).alias("max_temp_bins"))
+                    .with_columns(
+            (pl.col("dew_point_avg") / 10).clip(lower_bound=-15).alias("temp_DewPt"))
+                    .with_columns(
+            # group dew points
+            (pl.col("temp_DewPt") / 3).floor().alias("dew_point_bins"))
+                    .with_columns(
+            (pl.col("dew_point_bins") - pl.col("dew_point_bins").min()).alias("dew_point_bins"))
+                ).to_pandas()
+        city_data["precip_bins"] = pd.cut(city_data["PRCP_MIDWAY"], [0, 1, 5, 10, 20, 150],
+                                          labels=["1", "2", "3", "4", "5",], right=False, include_lowest=True)
+        city_data = pl.from_pandas(city_data).with_columns(pl.col("precip_bins").cast(pl.Int64))
+
+        city_data = (city_data
+                     .with_columns(
+            pl.col("date").dt.date())
+                     .with_columns(
+            (pl.col("wind_dir_avg") / (np.pi / 9)).floor().alias("wind_bins_20"),
+            (pl.col("wind_dir_avg") / (np.pi / 5)).floor().alias("wind_bins_36"),
+            (pl.col("wind_dir_avg") / (np.pi / 4)).floor().alias("wind_bins_45"),
+            (pl.col("wind_dir_avg") / (np.pi / 3)).floor().alias("wind_bins_60"),
+
+            # Calendar variables for fixed effects
+            pl.col("date").dt.weekday().alias("dow"),
+            pl.col("date").dt.strftime("%Y%m").cast(pl.Int64).alias("ym"),  # deviates from the original code
+            (pl.col("date").dt.ordinal_day() == 1).cast(pl.Int64).alias("jan1"),
+            (pl.col("date").dt.day() == 1).cast(pl.Int64).alias("month1"),
+
+            # Holiday dummies
+            pl.col("date").dt.strftime("%Y-%m-%d").is_in(
+                [f"{year}-{date}" for year in np.arange(2001, 2014)
+                 for date in ["01-01", "07-04", "11-11", "12-25"]
+                 ] + [
+                    "2001-01-15", "2001-02-19", "2001-05-28", "2001-09-03", "2001-10-08", "2001-11-22",
+                    "2002-01-21", "2002-02-18", "2002-05-27", "2002-09-02", "2002-10-14", "2002-11-28",
+                    "2003-01-20", "2003-02-17", "2003-05-26", "2003-09-01", "2003-10-13", "2003-11-27",
+                    "2004-01-19", "2004-02-16", "2004-05-31", "2004-09-06", "2004-10-11", "2004-11-25",
+                    "2005-01-17", "2005-02-21", "2005-05-30", "2005-09-05", "2005-10-10", "2005-11-24",
+                    "2006-01-16", "2006-02-20", "2006-05-29", "2006-09-04", "2006-10-09", "2006-11-23",
+                    "2007-01-15", "2007-02-19", "2007-05-28", "2007-09-03", "2007-10-08", "2007-11-22",
+                    "2008-01-21", "2008-02-18", "2008-05-26", "2008-09-01", "2008-10-13", "2008-11-27",
+                    "2009-01-19", "2009-02-16", "2009-05-25", "2009-09-07", "2009-10-12", "2009-11-26",
+                    "2010-01-18", "2010-02-15", "2010-05-31", "2010-09-06", "2010-10-11", "2010-11-26",
+                    "2011-01-17", "2011-02-21", "2011-05-30", "2011-09-05", "2011-10-10", "2011-11-24",
+                    "2012-01-16", "2012-02-20", "2012-05-28", "2012-09-03", "2012-10-08", "2012-11-29",
+                    "2013-01-21", "2013-02-18", "2013-05-27", "2013-09-02", "2013-10-14", "2013-11-28"
+                ]
+            ).cast(pl.Int64).alias("holiday"),
+            # Pollution variables
+            ((pl.col("avg_pm10_mean") - pl.col("avg_pm10_mean").mean()) / pl.col("avg_pm10_mean").std()
+             ).alias("standardized_pm"),
+
+            # Dependent variables
+            pl.col("total_violent").log().alias("ln_violent"),
+            pl.col("total_property").log().alias("ln_property"),)
+                   )
+
+        all_crime_data = (pl.read_csv(self.output_data_path / "chicago_all_crimes.csv")
+                          .with_columns(
+            pl.col("date").str.to_date(),
+            ((pl.col("violent") == 1) & (pl.col("part1") == 1)).cast(pl.Int64).alias("violent_p1"),
+            ((pl.col("violent") == 0) & (pl.col("part1") == 1)).cast(pl.Int64).alias("nonviolent_p1"),
+            ((pl.col("violent") == 1) & (pl.col("part1") == 0)).cast(pl.Int64).alias("violent_np1"),
+            ((pl.col("violent") == 0) & (pl.col("part1") == 0)).cast(pl.Int64).alias("nonviolent_np1"),
+            (pl.col("violent") == 1).cast(pl.Int64).alias("all_violent"),
+            (pl.col("violent") == 0).cast(pl.Int64).alias("all_nonviolent")))
+
+        all_crime_daily_data = (all_crime_data
+                                .group_by("date")
+                                .agg(
+            [pl.col(col).sum() for col in ["violent_p1", "nonviolent_p1", "violent_np1",
+                                            "nonviolent_np1", "all_violent", "all_nonviolent"]])
+                                )
+
+        data = (all_crime_daily_data
+                .join(
+            city_data, on="date", how="inner", validate="1:1")
+                .with_columns(
+            pl.col("violent_p1").log().alias("ln_violent_p1"),
+            pl.col("nonviolent_p1").log().alias("ln_nonviolent_p1"),
+            pl.col("all_violent").log().alias("ln_all_violent"),
+            pl.col("all_nonviolent").log().alias("ln_all_nonviolent"),)
+                .sort("date")
                 )
 
-
+        data.write_csv(self.output_data_path / "chicago_citylevel_dataset.csv")
 
 
 
@@ -1099,7 +1191,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor.create_citylevel_dataset(process_raw_data=True)
+    preprocessor.create_citylevel_dataset(process_raw_data=False)
 
 
 
