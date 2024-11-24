@@ -1186,6 +1186,9 @@ class DataPreprocessor:
         micro_data = pl.from_pandas(micro_data)
         micro_data.write_csv(self.output_data_path / "micro_dataset_original.csv")
 
+    def construct_micro_dataset(self):
+
+
 
 
 if __name__ == '__main__':
@@ -1193,7 +1196,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor.save_original_micro_dataset()
+    preprocessor.construct_micro_dataset()
 
 
 
