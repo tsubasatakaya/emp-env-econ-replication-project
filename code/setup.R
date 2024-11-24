@@ -1,11 +1,14 @@
-packages = c("tidyverse", "estimatr", "modelsummary", "gt")
+packages <-  c("tidyverse", "estimatr", "modelsummary", "gt")
 
 package.check <- lapply(
   packages,
-  FUN = function(x) {
+  FUN <-  function(x) {
     if (!require(x, character.only = TRUE)) {
       install.packages(x, dependencies = TRUE)
       library(x, character.only = TRUE)
     }
   }
 )
+
+data_path <- "data"
+output_path <- "output"
