@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import polars as pl
 import polars.selectors as cs
+from fastjsonschema import validate
 
 
 class DataPreprocessor:
@@ -1186,8 +1187,18 @@ class DataPreprocessor:
         micro_data = pl.from_pandas(micro_data)
         micro_data.write_csv(self.output_data_path / "micro_dataset_original.csv")
 
-
-
+    def construct_micro_dataset(self):
+        crime_interstate_data = pl.read_csv(self.output_data_path / "crime_road_distances.csv")
+        crime_merged = (crime_interstate_data
+                        .join(
+            pl.read_csv(self.output_data_path / "chicago_part1_crimes.csv"),
+            on="id", how="left", validate="1:1")
+                        .filter(pl.col("sample_set") == 1)
+                        .with_columns(
+            pl.col("near_angle_1").mod(180).alias("ortho_dir"))
+                        .with_columns(
+            pl.col("ortho_dir").mode().over("route_num_1_mod").alias("treatment_angle"))
+                        )
 
 
 
@@ -1196,7 +1207,7 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor.create_citylevel_dataset(process_raw_data=False)
+    # preprocessor.construct_micro_dataset()
 
 
 
