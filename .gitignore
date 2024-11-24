@@ -3,3 +3,6 @@
 *.dta
 replication_package
 test_dataset.py
+__pycache__
+.Rproj.user
+*.Rproj
