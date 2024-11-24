@@ -10,4 +10,4 @@ output_data_path = Path("data")
 preprocessor = DataPreprocessor(input_data_path,
                                 output_data_path,)
 
-preprocessor._extract_crime_data()
+preprocessor.create_citylevel_dataset(process_raw_data=True)
