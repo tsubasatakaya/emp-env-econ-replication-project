@@ -106,6 +106,15 @@ class DataPreprocessor:
 
         crime_interstate_wide = (crime_interstate_wide
                                  .with_columns(
+            pl.lit(1).alias("sample_set"))
+                                 .with_columns(
+            pl.when(pl.col("longitude") < -87.8)
+            .then(pl.lit(0))
+            .otherwise(pl.col("sample_set")))
+                                 )
+
+        crime_interstate_wide = (crime_interstate_wide
+                                 .with_columns(
             pl.when(
                 # Drop observations on fringe of city limits
                 (pl.col("longitude") < -87.8) |
@@ -1196,9 +1205,15 @@ class DataPreprocessor:
                         .filter(pl.col("sample_set") == 1)
                         .with_columns(
             pl.col("near_angle_1").mod(180).alias("ortho_dir"))
-                        .with_columns(
-            pl.col("ortho_dir").mode().over("route_num_1_mod").alias("treatment_angle"))
                         )
+        treatment_angle_by_route = (crime_merged
+                                    .group_by("route_num_1_mod")
+                                    .agg(
+            pl.col("ortho_dir").mode().alias("treatment_angle"))
+                                     .with_columns(
+            pl.col("treatment_angle").list.min()
+        )
+                                     )
 
 
 
@@ -1207,8 +1222,8 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor.create_citylevel_dataset()
-    # preprocessor._extract_crime_interstate_distance()
+    # preprocessor.create_citylevel_dataset()
+    preprocessor.construct_micro_dataset()
 
 
 
