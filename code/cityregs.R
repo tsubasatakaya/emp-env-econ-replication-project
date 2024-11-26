@@ -85,7 +85,11 @@ msummary(results, fmt = 4,
          coef_map = cm, gof_map = gm,
          add_rows = f_rows,
          output = "gt") |> 
-  sub_missing(missing_text = "")
+  sub_missing(missing_text = "") |> 
+  tab_spanner(label = "OLS", columns = c(2, 3, 5, 6), gather = FALSE) |> 
+  tab_spanner(label = "IV", columns = c(4, 7), gather = FALSE) |> 
+  tab_spanner(label = "Violent crimes", columns = 2:4) |> 
+  tab_spanner(label = "Property crimes", columns = 5:7)
   
 
 
