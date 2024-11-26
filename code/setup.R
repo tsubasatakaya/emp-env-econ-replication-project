@@ -1,4 +1,4 @@
-packages <-  c("tidyverse", "estimatr", "modelsummary", "gt")
+packages <-  c("tidyverse", "fixest", "modelsummary", "gt")
 
 package.check <- lapply(
   packages,
