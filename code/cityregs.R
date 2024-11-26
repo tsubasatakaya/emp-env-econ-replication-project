@@ -64,9 +64,11 @@ results <- results[sort(names(results))]
 # Generate table --------------------------------------------------------------
 cm <- c("standardized_pm" = "Standardized PM\U2081\U2080 reading",
         "fit_standardized_pm" = "Standardized PM\U2081\U2080 reading")
-gm <- tribble(~raw,         ~clean,        ~fmt,
-              "nobs",       "Observations", 0,
-              "r.squared",  "R\U00B2",      2)
+gof_f <- function(x) format(round(x, 2), big.mark = ",")
+gm <- list(
+  list("raw" = "nobs", "clean" = "Observations", "fmt" = gof_f),
+  list("raw" = "r.squared", "clean" = "R\U00B2", "fmt" = gof_f)
+)
 
 f_violent <- round(fitstat(results[[3]], "ivf")[["ivf1::standardized_pm"]][["stat"]], 1)
 f_property <- round(fitstat(results[[6]], "ivf")[["ivf1::standardized_pm"]][["stat"]], 1)
