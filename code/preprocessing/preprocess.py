@@ -1231,6 +1231,9 @@ class DataPreprocessor:
         micro_data.write_csv(self.output_data_path / "micro_dataset_original.csv")
 
     def create_micro_dataset(self):
+        wind_var = "wind_deg_avg"
+        wind_dir_threshold = 60
+        distance_threshold = 5280
         crime_interstate_data = pl.read_csv(self.output_data_path / "crime_road_distances.csv")
         crime_merged = (crime_interstate_data
                         .join(
@@ -1245,9 +1248,131 @@ class DataPreprocessor:
                                     .agg(
             pl.col("ortho_dir").mode().alias("treatment_angle"))
                                      .with_columns(
-            pl.col("treatment_angle").list.min()
-        )
+            pl.col("treatment_angle").list.min())
                                      )
+
+        crime_merged = (crime_merged
+                        .join(
+            treatment_angle_by_route,
+            on="route_num_1_mod", how="left", validate="m:1",)
+                        .with_columns(
+            (pl.col("near_angle_1") - pl.col("treatment_angle")).mod(360).alias("near_angle_1_adj"))
+                        .with_columns(
+            pl.when(
+                (pl.col("near_angle_1_adj") > 90) & (pl.col("near_angle_1_adj") < 270))
+            .then(pl.lit(1))
+            .otherwise(pl.lit(0))
+            .alias("side_dummy"))
+                        .with_columns(
+            ((pl.col("near_angle_1") / 20).round() * 20).alias("round_angle"))
+                        )
+
+        crime_data = (crime_merged
+                      .group_by(["date", "route_num_1_mod", "side_dummy", "violent"])
+                      .agg(
+            pl.count("id").alias("num_crimes"))
+                      )
+
+        weather_data = pl.read_csv(self.output_data_path / "chicago_weather_daily_from_hourly.csv"
+                                   ).filter(pl.col("usaf") == 725340)
+        midway_weather_data = (weather_data
+                               .join(
+            pl.read_csv(self.output_data_path / "chicago_midwayohare_daily_weather.csv"
+                        ).select("date", cs.contains("MIDWAY")),
+            on="date", how="full", validate="1:1",)
+                               .with_columns(
+            [pl.col(f"{col}_dir_avg").degrees().alias(f"{col}_deg_avg")
+             for col in ["wind", "wind_speed", "wind_power"]])
+                               .drop("date_right")
+                               )
+
+        comb = (pl.DataFrame({"route_num_1_mod": ["I57", "I290", "I90_B", "I90_A", "I94", "I55", "I90_C"]})
+                .join(
+            pl.DataFrame({"side_dummy": [0, 1]}), how="cross")
+                .join(
+            pl.DataFrame({"violent": [0, 1]},), how="cross")
+                )
+        midway_weather_panel_data = (midway_weather_data
+                                     .join(comb, how="cross")
+                                     .join(
+            treatment_angle_by_route, on="route_num_1_mod", how="left", validate="m:1")
+                                     )
+
+        orth_threshold_mask_1 = (pl.col("wind_deg_adj") > 360 - wind_dir_threshold) | (pl.col("wind_deg_adj") < wind_dir_threshold)
+        orth_threshold_mask_2 = pl.col("wind_deg_adj").is_between(180 - wind_dir_threshold, 180 + wind_dir_threshold, closed="none")
+
+        midway_weather_panel_data = (midway_weather_panel_data
+                                     .with_columns(
+            (pl.col(wind_var) - pl.col("treatment_angle")).mod(360).alias("wind_deg_adj"))
+                                     .with_columns(
+            pl.when(
+                orth_threshold_mask_1 | orth_threshold_mask_2)
+            .then(pl.lit(1))
+            .otherwise(pl.lit(0))
+            .alias("in_sample"))
+                                    .with_columns(
+            pl.when(
+                (pl.col("in_sample") == 1) &
+                (((pl.col("side_dummy") == 1) & orth_threshold_mask_2) | ((pl.col("side_dummy") == 0) & orth_threshold_mask_1)))
+            .then(pl.lit(1))
+            .otherwise(pl.lit(0))
+            .alias("treatment"))
+                                   .with_columns(
+            pl.when(pl.col("in_sample") == 0)
+            .then(None)
+            .otherwise(pl.col("treatment"))
+            .alias("treatment"))
+                                   .with_columns(
+            ((pl.col(wind_var) / 20).round() * 20).alias("round"))
+                                   )
+
+        data = (midway_weather_panel_data
+                .join(
+            crime_data.with_columns(pl.col("side_dummy").cast(pl.Int64)),
+            on=["route_num_1_mod", "date", "side_dummy", "violent"], how="full", validate="1:1",)
+                .with_columns(
+            pl.col("date").str.to_date())
+                .with_columns(
+            pl.col("date").dt.year().alias("year"),
+            pl.col("date").dt.month().alias("month"),
+            pl.col("date").dt.day().alias("day"),)
+                .filter(~pl.col("year").is_in([2000, 2013]))
+                )
+
+        fe_pairs = {
+            "route_side": ("route_num_1_mod", "side_dummy"),
+            "month_year": ("month", "year"),
+            "route_date": ("route_num_1_mod", "date")
+        }
+        for name, (col1, col2) in fe_pairs.items():
+            data = data.join(
+                data.select(col1, col2).unique().with_row_index(name),
+                on=[col1, col2]
+            )
+
+        data = (data
+                .with_columns(
+            pl.when((pl.col("in_sample") == 1) & pl.col("num_crimes").is_null())
+            .then(pl.lit(0))
+            .otherwise(pl.col("num_crimes"))
+            .alias("num_crimes"))
+                .sort("route_num_1_mod", "date", "side_dummy", "violent")
+                .with_columns(
+            pl.when(pl.col("side_dummy") == 1)
+            .then((pl.col("num_crimes") - pl.col("num_crimes").shift(1)))
+            .alias("crime_diff"),
+            pl.when(pl.col("side_dummy") == 1)
+            .then(pl.col("treatment") - pl.col("treatment").shift(1))
+            .alias("treatment_diff"))
+                .with_columns(
+            pl.col("num_crimes").mean().over("violent").alias("mean_crimes"))
+                .with_columns(
+            (pl.col("num_crimes") / pl.col("mean_crimes")).alias("stand_crimes")
+        )
+                )
+
+        data.write_csv(self.output_data_path / "micro_dataset_replicated.csv")
+
 
 
 
@@ -1256,8 +1381,8 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    # preprocessor.construct_micro_dataset()
-    preprocessor._extract_crime_interstate_distance()
+    preprocessor.create_micro_dataset()
+    # preprocessor._extract_crime_interstate_distance()
 
 
 
