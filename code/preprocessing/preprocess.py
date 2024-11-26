@@ -1230,7 +1230,7 @@ class DataPreprocessor:
         micro_data = pl.from_pandas(micro_data)
         micro_data.write_csv(self.output_data_path / "micro_dataset_original.csv")
 
-    def construct_micro_dataset(self):
+    def create_micro_dataset(self):
         crime_interstate_data = pl.read_csv(self.output_data_path / "crime_road_distances.csv")
         crime_merged = (crime_interstate_data
                         .join(
