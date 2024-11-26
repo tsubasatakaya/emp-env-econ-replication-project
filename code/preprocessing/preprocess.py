@@ -108,42 +108,76 @@ class DataPreprocessor:
                                  .with_columns(
             pl.lit(1).alias("sample_set"))
                                  .with_columns(
+            # Drop observations on fringe of city limits
             pl.when(pl.col("longitude") < -87.8)
             .then(pl.lit(0))
-            .otherwise(pl.col("sample_set")))
-                                 )
-
-        crime_interstate_wide = (crime_interstate_wide
+            .otherwise(pl.col("sample_set"))
+            .alias("sample_set"))
+                                 .with_columns(
+            # Drop observations far out I-290 or I-55
+            pl.when(
+                (pl.col("route_num_1").is_in(["I290", "I55"])) & (pl.col("longitude") < -87.74))
+            .then(pl.lit(0))
+            .otherwise(pl.col("sample_set"))
+            .alias("sample_set"))
+                                 .with_columns(
+            # Drop observations more than one mile from the closest interstate
+            pl.when(pl.col("near_dist_1") > 5280)
+            .then(pl.lit(0))
+            .otherwise(pl.col("sample_set"))
+            .alias("sample_set"))
+                                 .with_columns(
+            # Drop observations closer than one mile to two interstates
+            pl.when(pl.col("near_dist_2") < 5280)
+            .then(pl.lit(0))
+            .otherwise(pl.col("sample_set"))
+            .alias("sample_set"))
+                                 .with_columns(
+            # Trim observations to clean treatment/control groups
+            # I-90A
+            pl.when(
+                ((pl.col("latitude") - pl.col("longitude")) > 129.69) | (
+                    ((pl.col("latitude") - pl.col("longitude")) < 129.575) & (pl.col("route_num_1_mod") == "I90_A")))
+            .then(pl.lit(0))
+            .otherwise(pl.col("sample_set"))
+            .alias("sample_set"))
+                                 .with_columns(
+            # I-90B
+            pl.when(
+                (pl.col("latitude") < 41.79) & (pl.col("route_num_1_mod") == "I90_B"))
+            .then(pl.lit(0))
+            .otherwise(pl.col("sample_set"))
+            .alias("sample_set"))
+                                 .with_columns(
+            # I-90C
+            pl.when(
+                ((pl.col("latitude") - pl.col("longitude") > 129.36) & (pl.col("route_num_1_mod") == "I90_C")) | (
+                    (pl.col("latitude") - pl.col("longitude") < 129.26) & (pl.col("route_num_1_mod") == "I90_C")))
+            .then(pl.lit(0))
+            .otherwise(pl.col("sample_set"))
+            .alias("sample_set"))
+                                 .with_columns(
+            # I-55
+            pl.when(
+                (pl.col("longitude") > -87.65) & (pl.col("route_num_1") == "I55"))
+            .then(pl.lit(0))
+            .otherwise(pl.col("sample_set"))
+            .alias("sample_set"))
+                                 .with_columns(
+            # I-94
+            pl.when(
+                ((pl.col("latitude") - pl.col("longitude")) < 129.34) & (pl.col("route_num_1_mod") == "I94"))
+            .then(pl.lit(0))
+            .otherwise(pl.col("sample_set"))
+            .alias("sample_set"))
                                  .with_columns(
             pl.when(
-                # Drop observations on fringe of city limits
-                (pl.col("longitude") < -87.8) |
-                # Drop observations far out I-290 or I-55
-                ((pl.col("route_num_1").is_in(["I290", "I55"])) & (pl.col("longitude") < -87.74)) |
-                # Drop observations more than one mile from the closest interstate
-                (pl.col("near_dist_1") > 5280) |
-                # Drop observations closer than one mile to two interstates
-                (pl.col("near_dist_2") < 5280) |
-                # Trim observations to clean treatment/control groups
-                # I-90A
-                ((pl.col("latitude") - pl.col("longitude")) > 129.69) |
-                (((pl.col("latitude") - pl.col("longitude")) < 129.575) & (pl.col("route_num_1_mod") == "I90_A")) |
-                # I-90B
-                ((pl.col("latitude") < 41.79) & (pl.col("route_num_1_mod") == "I90_B")) |
-                # I-90C
-                (((pl.col("latitude") - pl.col("longitude")) > 129.36) & (pl.col("route_num_1_mod") == "I90_C")) |
-                (((pl.col("latitude") - pl.col("longitude")) < 129.26) & (pl.col("route_num_1_mod") == "I90_C")) |
-                # I-55
-                ((pl.col("longitude") > -87.65) & (pl.col("route_num_1") == "I55")) |
-                # I-94
-                (((pl.col("latitude") - pl.col("longitude")) < 129.34) & (pl.col("route_num_1_mod") == "I94")) |
-                ((pl.col("latitude") > 41.75) & (pl.col("route_num_1_mod") == "I94"))
-            )
+                (pl.col("latitude") > 41.75) & (pl.col("route_num_1_mod") == "I94"))
             .then(pl.lit(0))
-            .otherwise(pl.lit(1))
-            .alias("sample_set")
-        )
+            .otherwise(pl.col("sample_set"))
+            .alias("sample_set"))
                                  )
+
 
         crime_interstate_wide.write_csv(self.output_data_path/"crime_road_distances.csv")
 
@@ -1222,8 +1256,8 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    # preprocessor.create_citylevel_dataset()
-    preprocessor.construct_micro_dataset()
+    # preprocessor.construct_micro_dataset()
+    preprocessor._extract_crime_interstate_distance()
 
 
 
