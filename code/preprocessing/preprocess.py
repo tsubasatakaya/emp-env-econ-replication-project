@@ -84,7 +84,7 @@ class DataPreprocessor:
 
         crime_interstate_wide = (crime_interstate_wide
                                  .with_columns(
-            [(pl.col(f"near_angle_{i}") % 360)for i in [1, 2]])
+            [(90 - pl.col(f"near_angle_{i}")).mod(360).alias(f"near_angle_{i}") for i in [1, 2]])
                                  .with_columns(
             [pl.col(f"near_angle_{i}").radians().alias(f"near_dir_{i}") for i in [1, 2]])
                                  )
@@ -1207,8 +1207,8 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    # preprocessor.construct_micro_dataset()
-
+    preprocessor.create_citylevel_dataset()
+    # preprocessor._extract_crime_interstate_distance()
 
 
 
