@@ -1,4 +1,4 @@
-packages <-  c("tidyverse", "fixest", "modelsummary", "gt")
+packages <-  c("tidyverse", "ggplot2", "broom", "fixest", "modelsummary", "gt")
 
 package.check <- lapply(
   packages,
