@@ -83,19 +83,29 @@ add_rows <- tibble(term = c("First stage F-statistic", "Calendar fixed effects",
                    col6 = c(as.character(f_property), "X", "X", "X"))
 attr(add_rows, "position") <- c(3, 4, 5, 6)
 
+footnote <- md("*Notes*: Newey-West robust standard errors reported. Dependent variable
+               is the log of the daily number of violent crimes (columns 1-3) and log of the
+               daily number of property crimes (columns 4-6). See Table 2 of the paper for 
+               the details of model specifications.")
+
 msummary(results, fmt = 4,
          coef_map = cm, gof_map = gm,
          add_rows = add_rows,
          output = "gt") |> 
   sub_missing(missing_text = "") |> 
+  tab_footnote(footnote = footnote) |> 
   tab_spanner(label = "OLS", columns = c(2, 3, 5, 6), gather = FALSE) |> 
   tab_spanner(label = "IV", columns = c(4, 7), gather = FALSE) |> 
   tab_spanner(label = "Violent crimes", columns = 2:4) |> 
-  tab_spanner(label = "Property crimes", columns = 5:7)
-  
+  tab_spanner(label = "Property crimes", columns = 5:7) |> 
+  tab_options(table.font.size = "10pt",
+              table.width = pct(100),
+              footnotes.font.size = "10pt") |> 
+  gtsave("table_2_rep.tex", path = file.path(output_path, "tables"))
 
 
 
+# Make effect plot -------------------------------------------------------------
 
 
 
