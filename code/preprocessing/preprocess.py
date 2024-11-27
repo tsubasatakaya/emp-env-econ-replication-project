@@ -1371,6 +1371,16 @@ class DataPreprocessor:
         )
                 )
 
+        data = (data
+                .select("usaf", "wban", "year", "month", "day", "date", "windobs", "speed_norm", "power_norm",
+                        "wind_dir_avg", "wind_speed_dir_avg", "wind_power_dir_avg", "calmday", "tempdataflag",
+                        "tmax", "tavg", "tmin", "dew_point_avg", "sealevel_pressure_avg", "AWND_MIDWAY",
+                        "PRCP_MIDWAY", "SNOW_MIDWAY", "SNWD_MIDWAY", "TMAX_MIDWAY", "TMIN_MIDWAY", "wind_deg_avg",
+                        "wind_speed_deg_avg", "wind_power_deg_avg", "round", "route_num_1_mod", "treatment_angle",
+                        "side_dummy", "wind_deg_adj", "in_sample", "treatment", "violent", "num_crimes", "route_side",
+                        "month_year", "route_date", "crime_diff", "treatment_diff", "mean_crimes", "stand_crimes")
+                .sort("date"))
+
         data.write_csv(self.output_data_path / "micro_dataset_replicated.csv")
 
 
