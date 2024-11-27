@@ -106,10 +106,9 @@ msummary(results, fmt = 4,
 
 
 # Make effect plot -------------------------------------------------------------
-broom::tidy(results[[1]], conf.int = TRUE)
 dv_list <- c(rep("violent", 3), rep("property", 3))
-specs <- c("OLS - calendar FE only", "OLS - calender FE + weather controls",
-           "IV - calender FE + weather controls")
+specs <- c("OLS - calendar FE only", "OLS - calendar FE + weather controls",
+           "IV - calendar FE + weather controls")
 spec_list <- c(rep(specs, 2))
 
 coef_df <- tibble()
@@ -122,16 +121,29 @@ for (i in seq_along(results)) {
     bind_rows(df)
 }
 
+coef_df <- coef_df |> 
+  mutate(spec = factor(spec, levels = specs),
+         dv = factor(dv, levels = c("violent", "property")))
 
-
-
-
-
-
-
-
-
-
+cityreg_plot <- ggplot(coef_df, aes(x = dv, ymin = conf.low, ymax = conf.high)) +
+  geom_hline(yintercept = 0, linetype = "dashed") + 
+  geom_linerange(aes(col = spec), linewidth = 1, 
+                 position = position_dodge(width = 0.15)) +
+  geom_point(aes(x = dv, y = estimate, col = spec), size = 3,
+             position = position_dodge(width = 0.15)) + 
+  scale_x_discrete(labels = c("Violent crimes", "Property crimes")) + 
+  scale_color_okabeito() +
+  theme_minimal() +
+  labs(x = "", y = "Treatment effect") + 
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        panel.border = element_rect(color = "grey", fill = NA),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title = element_text(size = 12,),
+        axis.text = element_text(size = 11),
+        legend.text = element_text(size = 10))
+ggsave(file.path(output_path, "figures/cityreg_coef_plot.svg"), cityreg_plot)
 
 
 
