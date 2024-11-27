@@ -75,6 +75,12 @@ add_rows <- tibble(term = c("Route \U00D7 side fixed effects",
                    col3 = c("X", "X", NA, "X", "X", NA),
                    col4 = c("X", "X", "X", "X", "X", "X"))
 attr(add_rows, "position") <- c(3:5, 10:12)
+
+footnote <- md("*Notes*: Robust standard errors reported. Dependent variable
+               is the number of crimes within one mile of one side of the interstate
+               normalized by the mean number of crimes. See Table 4 of the paper
+               for more details.")
+
 summary_data <- msummary(panels, fmt = 4, shape = "rbind",
                          coef_map = cm, gof_map = gm,
                          add_rows = add_rows,)
@@ -82,8 +88,23 @@ gt(summary_data@data) |>
   tab_row_group(rows = 1:7, label = panel_a_title) |> 
   tab_row_group(rows = 8:14, label = panel_b_title) |> 
   row_group_order(groups = c(panel_a_title, panel_b_title)) |> 
+  tab_footnote(footnote = footnote) |> 
   cols_align(align = "center",
-             columns = 2:5)
+             columns = 2:5) |> 
+  gtsave("table_4_rep.tex", path = file.path(output_path, "tables"))
+
+
+# Make effect plot -------------------------------------------------------------
+dv_list <- 
+
+
+
+
+
+
+
+
+
 
 
 
