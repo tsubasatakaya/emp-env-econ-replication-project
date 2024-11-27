@@ -143,7 +143,9 @@ cityreg_plot <- ggplot(coef_df, aes(x = dv, ymin = conf.low, ymax = conf.high)) 
         axis.title = element_text(size = 12,),
         axis.text = element_text(size = 11),
         legend.text = element_text(size = 10))
-ggsave(file.path(output_path, "figures/cityreg_coef_plot.svg"), cityreg_plot)
+ggsave(file.path(output_path, "figures/cityreg_coef_plot.svg"), cityreg_plot,
+       width = 10.4, height = 7.8, units = "in", dpi = 300
+       )
 
 
 
