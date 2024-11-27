@@ -51,9 +51,11 @@ for (i in seq_along(names)) {
 
 # Generate table ---------------------------------------------------------------
 panels <- list(
-  "Panel A: Violent crime" = violent_results,
-  "Panel B: Property crime" = property_results
+  violent_results,
+  property_results
 )
+panel_a_title <- "Panel A: Violent crime"
+panel_b_title <- "Panel B: Property crime"
 
 cm <- c("treatment" = "Treatment (downwind)")
 gof_f <- function(x) format(round(x, 3), big.mark = ",")
@@ -62,18 +64,26 @@ gm <- list(
   list("raw" = "r.squared", "clean" = "R\U00B2", "fmt" = gof_f)
 )
 
-f_rows <- tibble(term = c("First stage F-statistic", "Calendar fixed effects",
-                          "Weather controls", "Historical mean temp"),
-                 col1 = c(NA, "X", NA, NA),
-                 col2 = c(NA, "X", "X", "X"),
-                 col3 = c(as.character(f_violent), "X", "X", "X"),
-                 col4 = c(NA, "X", NA, NA),
-                 col5 = c(NA, "X", "X", "X"),
-                 col6 = c(as.character(f_property), "X", "X", "X"))
-attr(f_rows, "position") <- c(3, 4, 5, 6)
-msummary(panels, fmt = 4, shape = "rbind",
-         coef_map = cm, gof_map = gm)
-
+add_rows <- tibble(term = c("Route \U00D7 side fixed effects", 
+                            "Route \U00D7 date fixed effects",
+                            "Route \U00D7 side weather interaction",
+                            "Route \U00D7 side fixed effects", 
+                            "Route \U00D7 date fixed effects",
+                            "Route \U00D7 side weather interaction"),
+                   col1 = c(NA, NA, NA, NA, NA, NA),
+                   col2 = c("X", NA, NA, "X", NA, NA),
+                   col3 = c("X", "X", NA, "X", "X", NA),
+                   col4 = c("X", "X", "X", "X", "X", "X"))
+attr(add_rows, "position") <- c(3:5, 10:12)
+summary_data <- msummary(panels, fmt = 4, shape = "rbind",
+                         coef_map = cm, gof_map = gm,
+                         add_rows = add_rows,)
+gt(summary_data@data) |> 
+  tab_row_group(rows = 1:7, label = panel_a_title) |> 
+  tab_row_group(rows = 8:14, label = panel_b_title) |> 
+  row_group_order(groups = c(panel_a_title, panel_b_title)) |> 
+  cols_align(align = "center",
+             columns = 2:5)
 
 
 
