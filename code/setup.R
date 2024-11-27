@@ -2,6 +2,7 @@ packages <-  c(
   "tidyverse", 
   "ggplot2", 
   "see",
+  "forcats",
   "broom", 
   "fixest", 
   "modelsummary", 
