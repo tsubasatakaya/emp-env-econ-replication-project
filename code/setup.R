@@ -12,3 +12,10 @@ package.check <- lapply(
 
 data_path <- "data"
 output_path <- "output"
+
+for (folder in c("figures", "tables")) {
+  folder_path <- file.path(output_path, folder)
+  if (!dir.exists(folder_path)) {
+    dir.create(folder_path, recursive = TRUE)
+  }
+}
