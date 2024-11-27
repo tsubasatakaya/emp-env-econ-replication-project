@@ -73,19 +73,19 @@ gm <- list(
 f_violent <- round(fitstat(results[[3]], "ivf")[["ivf1::standardized_pm"]][["stat"]], 1)
 f_property <- round(fitstat(results[[6]], "ivf")[["ivf1::standardized_pm"]][["stat"]], 1)
 
-f_rows <- tibble(term = c("First stage F-statistic", "Calendar fixed effects",
-                          "Weather controls", "Historical mean temp"),
-                 col1 = c(NA, "X", NA, NA),
-                 col2 = c(NA, "X", "X", "X"),
-                 col3 = c(as.character(f_violent), "X", "X", "X"),
-                 col4 = c(NA, "X", NA, NA),
-                 col5 = c(NA, "X", "X", "X"),
-                 col6 = c(as.character(f_property), "X", "X", "X"))
-attr(f_rows, "position") <- c(3, 4, 5, 6)
+add_rows <- tibble(term = c("First stage F-statistic", "Calendar fixed effects",
+                            "Weather controls", "Historical mean temp"),
+                   col1 = c(NA, "X", NA, NA),
+                   col2 = c(NA, "X", "X", "X"),
+                   col3 = c(as.character(f_violent), "X", "X", "X"),
+                   col4 = c(NA, "X", NA, NA),
+                   col5 = c(NA, "X", "X", "X"),
+                   col6 = c(as.character(f_property), "X", "X", "X"))
+attr(add_rows, "position") <- c(3, 4, 5, 6)
 
 msummary(results, fmt = 4,
          coef_map = cm, gof_map = gm,
-         add_rows = f_rows,
+         add_rows = add_rows,
          output = "gt") |> 
   sub_missing(missing_text = "") |> 
   tab_spanner(label = "OLS", columns = c(2, 3, 5, 6), gather = FALSE) |> 
