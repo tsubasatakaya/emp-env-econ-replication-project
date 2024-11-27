@@ -95,14 +95,52 @@ gt(summary_data@data) |>
 
 
 # Make effect plot -------------------------------------------------------------
-dv_list <- 
+specs <- c("No controls", "Route \U00D7 side fixed effects",
+           "Route \U00D7 date fixed effects", "Route \U00D7 side weather interaction")
 
+coef_df <- tibble()
+for (i in seq_along(violent_results)) {
+  df <- tidy(violent_results[[i]], conf.int = TRUE) |> 
+    filter(str_detect(term, treatment)) |> 
+    mutate(dv = "violent",
+           spec = specs[i])
+  coef_df <- coef_df |> 
+    bind_rows(df)
+}
+for (i in seq_along(property_results)) {
+  df <- tidy(property_results[[i]], conf.int = TRUE) |> 
+    filter(str_detect(term, treatment)) |> 
+    mutate(dv = "property",
+           spec = specs[i])
+  coef_df <- coef_df |> 
+    bind_rows(df)
+}
 
+coef_df <- coef_df |> 
+  mutate(spec = factor(spec, levels = specs),
+         dv = factor(dv, levels = c("violent", "property")))
 
-
-
-
-
+microreg_plot <- ggplot(coef_df, aes(x = dv, ymin = conf.low, ymax = conf.high)) +
+  geom_hline(yintercept = 0, linetype = "dashed") + 
+  geom_linerange(aes(col = spec), linewidth = 1, 
+                 position = position_dodge(width = 0.15)) +
+  geom_point(aes(x = dv, y = estimate, col = spec), size = 3,
+             position = position_dodge(width = 0.15)) + 
+  scale_x_discrete(labels = c("Violent crimes", "Property crimes")) + 
+  scale_color_okabeito(palette = "black_first") +
+  theme_minimal() +
+  labs(x = "", y = "Treatment effect") + 
+  theme(legend.position = "bottom",
+        legend.title = element_blank(),
+        panel.border = element_rect(color = "grey", fill = NA),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title = element_text(size = 12,),
+        axis.text = element_text(size = 11),
+        legend.text = element_text(size = 10))
+ggsave(file.path(output_path, "figures/microreg_coef_plot.svg"), microreg_plot,
+       width = 10.4, height = 7.8, units = "in", dpi = 300
+)
 
 
 
