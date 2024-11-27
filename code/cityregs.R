@@ -106,10 +106,21 @@ msummary(results, fmt = 4,
 
 
 # Make effect plot -------------------------------------------------------------
+broom::tidy(results[[1]], conf.int = TRUE)
+dv_list <- c(rep("violent", 3), rep("property", 3))
+specs <- c("OLS - calendar FE only", "OLS - calender FE + weather controls",
+           "IV - calender FE + weather controls")
+spec_list <- c(rep(specs, 2))
 
-
-
-
+coef_df <- tibble()
+for (i in seq_along(results)) {
+  df <- tidy(results[[i]], conf.int = TRUE) |> 
+    filter(str_detect(term, treatment)) |> 
+    mutate(dv = dv_list[i],
+           spec = spec_list[i])
+  coef_df <- coef_df |> 
+    bind_rows(df)
+}
 
 
 
