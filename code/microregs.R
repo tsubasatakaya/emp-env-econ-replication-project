@@ -95,8 +95,8 @@ gt(summary_data@data) |>
 
 
 # Make effect plot -------------------------------------------------------------
-specs <- c("No controls", "Route \U00D7 side fixed effects",
-           "Route \U00D7 date fixed effects", "Route \U00D7 side weather interaction")
+specs <- c("No controls", "+ Route \U00D7 side fixed effects",
+           "+ Route \U00D7 date fixed effects", "+ Route \U00D7 side weather interaction")
 
 coef_df <- tibble()
 for (i in seq_along(violent_results)) {
@@ -129,7 +129,7 @@ microreg_plot <- ggplot(coef_df, aes(x = dv, ymin = conf.low, ymax = conf.high))
   scale_x_discrete(labels = c("Violent crimes", "Property crimes")) + 
   scale_color_okabeito(palette = "black_first") +
   theme_minimal() +
-  labs(x = "", y = "Treatment effect") + 
+  labs(x = "", y = "Treatment effect\n") + 
   theme(legend.position = "bottom",
         legend.title = element_blank(),
         panel.border = element_rect(color = "grey", fill = NA),
@@ -137,9 +137,10 @@ microreg_plot <- ggplot(coef_df, aes(x = dv, ymin = conf.low, ymax = conf.high))
         panel.grid.minor.x = element_blank(),
         axis.title = element_text(size = 12,),
         axis.text = element_text(size = 11),
+        axis.text.x = element_text(face = "bold"),
         legend.text = element_text(size = 10))
 ggsave(file.path(output_path, "figures/microreg_coef_plot.svg"), microreg_plot,
-       width = 10.4, height = 7.8, units = "in", dpi = 300
+       width = 12, height = 7.8, units = "in", dpi = 300
 )
 
 
