@@ -1373,7 +1373,7 @@ class DataPreprocessor:
 
         data = (data
                 .select("usaf", "wban", "year", "month", "day", "date", "windobs", "speed_norm", "power_norm",
-                        "wind_dir_avg", "wind_speed_dir_avg", "wind_power_dir_avg", "calmday", "tempdataflag",
+                        "wind_dir_avg", "wind_speed_dir_avg", "wind_power_dir_avg", "avg_wind_speed", "calmday", "tempdataflag",
                         "tmax", "tavg", "tmin", "dew_point_avg", "sealevel_pressure_avg", "AWND_MIDWAY",
                         "PRCP_MIDWAY", "SNOW_MIDWAY", "SNWD_MIDWAY", "TMAX_MIDWAY", "TMIN_MIDWAY", "wind_deg_avg",
                         "wind_speed_deg_avg", "wind_power_deg_avg", "round", "route_num_1_mod", "treatment_angle",
