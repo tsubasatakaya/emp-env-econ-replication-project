@@ -1230,9 +1230,8 @@ class DataPreprocessor:
         micro_data = pl.from_pandas(micro_data)
         micro_data.write_csv(self.output_data_path / "micro_dataset_original.csv")
 
-    def create_micro_dataset(self):
+    def create_micro_dataset(self, wind_dir_threshold):
         wind_var = "wind_deg_avg"
-        wind_dir_threshold = 60
         distance_threshold = 5280
         crime_interstate_data = pl.read_csv(self.output_data_path / "crime_road_distances.csv")
         crime_merged = (crime_interstate_data
@@ -1381,7 +1380,7 @@ class DataPreprocessor:
                         "month_year", "route_date", "crime_diff", "treatment_diff", "mean_crimes", "stand_crimes")
                 .sort("date"))
 
-        data.write_csv(self.output_data_path / "micro_dataset_replicated.csv")
+        data.write_csv(self.output_data_path / f"micro_dataset_replicated_dir_thresh_{wind_dir_threshold}.csv")
 
 
 
