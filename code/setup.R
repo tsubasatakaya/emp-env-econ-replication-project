@@ -5,6 +5,7 @@ packages <-  c(
   "forcats",
   "broom", 
   "fixest", 
+  "fastDummies",
   "grf",
   "modelsummary", 
   "gt")
