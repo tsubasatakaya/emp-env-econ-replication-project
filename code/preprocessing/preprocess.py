@@ -1390,7 +1390,6 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    preprocessor.create_micro_dataset()
     # preprocessor._extract_crime_interstate_distance()
 
 
