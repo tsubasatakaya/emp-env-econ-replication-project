@@ -166,10 +166,10 @@ msummary(panels, fmt = 4, shape = "rbind",
               table.width = pct(100),
               footnotes.font.size = "10pt")
 
-
-
+# CATE visuals -----------------------------------------------------------------
 # Explore effect heterogeneity with clustered model
 forest_cluster <- forest_results[[2]]
+X_orig <- forest_cluster$X.orig
 tau_pred <- predict(forest_cluster, estimate.variance = TRUE)
 cate_df <- tibble(
   tau_hat = tau_pred$predictions,
@@ -179,12 +179,48 @@ cate_df <- tibble(
   avg_wind_speed = forest_cluster$X.orig$avg_wind_speed,
   route_id = route_id
 )
+cate_df |> 
+  group_by(route_id) |> 
+  summarize(avg = mean(tau_hat))
+
+
+
+wind_quantile <- unique(quantile(X_orig[["avg_wind_speed"]], probs = seq(0, 1, 0.05)))
 
 
 
 
 
 
+
+
+
+
+
+
+cov <- c("tmax", "valuePRCP_MIDWAY", "avg_wind_speed")
+cov_quantile <- map(cov, ~ unique(quantile(X_orig[[.x]],probs = seq(0, 1, 0.05))))
+names(cov_quantile) <- cov
+
+X_test <- expand_grid(!!!cov_quantile,
+                      side_dummy = c(0, 1)
+                      )
+X_test <- X_test |> 
+  mutate(side_dummy_x_tmax = side_dummy * tmax,
+         side_dummy_x_prcp = side_dummy * valuePRCP_MIDWAY)
+
+tau_pred_test <- predict(forest_cluster, X_test, estimate.variance = TRUE)
+cate_test_df <- tibble(
+  tau_hat = tau_pred_test$predictions,
+  var_hat = tau_pred_test$variance.estimates,
+  tmax = X_test$tmax,
+  prcp  = X_test$valuePRCP_MIDWAY,
+  avg_wind_speed = X_test$avg_wind_speed
+)
+
+cate_test_df |> 
+  ggplot(aes(x = tmax, y = tau_hat)) +
+  geom_point()
 
 
 
