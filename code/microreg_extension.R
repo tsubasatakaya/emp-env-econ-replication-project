@@ -8,7 +8,6 @@ micro_data <- read_csv(file.path(data_path, "micro_dataset_original.csv")) |>
 # Group relevant covariates
 fe_cov <- c("routeside")
 weather_cov <- c("tmax", "valuePRCP_MIDWAY", "avg_wind_speed")
-dummies <- c("side_dummy")
 treatment <- "treatment"
 dvs <- c("violent", "stand_crimes")
 vars_all <- c(fe_cov, weather_cov, dummies, treatment, dvs)
@@ -31,6 +30,44 @@ route_id <- violent_data$route_id
 X_raw <- violent_data |> select(all_of(c(fe_cov, weather_cov)), dummies)
 D <- violent_data |> pull(treatment)
 Y <- violent_data |> pull("stand_crimes")
+
+make_X <- function(X_raw, fe) {
+  X <- X_raw |> 
+    select(all_of(c(fe, weather_cov)))
+  X <- dummy_cols(X, select_columns = fe,
+                  remove_first_dummy = TRUE) |> 
+    select(-all_of(fe))
+  int_dummy <- colnames(X)[str_detect(colnames(X), paste0("routeside", "(_\\d)?"))]
+  X <- X |> 
+    mutate(across(all_of(int_dummy), .fns = ~ . * tmax, .names = "{.col}_x_tmax"),
+           across(all_of(int_dummy), .fns = ~ . * valuePRCP_MIDWAY, .names = "{.col}_x_prcp"))
+  return(X)
+}
+
+X_no_cluster <- make_X(X_raw, fe = c("routeside"))
+
+X_no_cluster <- X_raw |> 
+  select(all_of(c("routeside", weather_cov)))
+X_no_cluster <- dummy_cols(X_no_cluster, select_columns = "routeside",
+                           remove_first_dummy = TRUE) |> select(-routeside)
+dummy_no_cluster <- colnames(X_no_cluster)[str_detect(colnames(X_no_cluster), 
+                                                      paste0("routeside", "(_\\d)?"))]
+X_no_cluster <- X_no_cluster |> 
+  mutate(across(all_of(dummy_no_cluster), .fns = ~ . * tmax, .names = "{.col}_x_tmax"),
+         across(all_of(dummy_no_cluster), .fns = ~ . * valuePRCP_MIDWAY, .names = "{.col}_x_prcp"))
+
+X_cluster <- X_raw |> 
+  select(all_of(c("routeside", "route_id", weather_cov)))
+X_cluster <- dummy_cols(X_cluster, select_columns = "routeside",
+                        remove_first_dummy = TRUE) |> select(-routeside)
+X_cluster <- dummy_cols(X_cluster, select_columns = "route_id",
+                        remove_first_dummy = TRUE) |> select(-route_id)
+dummy_cluster <- colnames(X_cluster)[str_detect(colnames(X_cluster), 
+                                                paste0("routeside", "(_\\d)?"))]
+X_cluster <- X_cluster |> 
+  mutate(across(all_of(dummy_cluster), .fns = ~ . * tmax, .names = "{.col}_x_tmax"),
+         across(all_of(dummy_cluster), .fns = ~ . * valuePRCP_MIDWAY, .names = "{.col}_x_prcp"))
+X_list <- list(X_no_cluster, X_cluster)
 
 # Model fitting ----------------------------------------------------------------
 # Create a list of covariates, FE, and arguments for loop
