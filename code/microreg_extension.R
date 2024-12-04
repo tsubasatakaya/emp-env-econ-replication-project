@@ -189,7 +189,14 @@ cate_df <- tibble(
   route_id = route_id
 )
 
-# Boxplot of CATE by interstate
+# Histogram of CATE
+cate_df |> 
+  ggplot(aes(x = tau_hat)) +
+  geom_histogram(bins = 30, color = "#e9ecef", fill = "#69b3a2", alpha = 0.7,) +
+  labs(x = "\n CATE", y = "Frequency\n") +
+  theme_custom 
+
+# Violin plot of CATE by interstate
 cate_df |> 
   mutate(route_id = factor(route_id, 
                            labels = c("I290", "I55", "I57", "I90A", 
@@ -202,19 +209,14 @@ cate_df |>
   scale_fill_okabeito() +
   theme(legend.position = "none")
 
-cate_df |> 
-  ggplot(aes(x = tau_hat)) +
-  geom_histogram(bins = 30, color = "#e9ecef", fill = "#69b3a2", alpha = 0.7,) +
-  labs(x = "\n CATE", y = "Frequency\n") +
-  theme_custom 
-
-
+# Visualize partial effect of temperature and wind
+# Create test X from all combinations of 5% quantile values of each variable
 cov <- c("tmax", "valuePRCP_MIDWAY", "avg_wind_speed")
 cov_quantile <- map(cov, ~ unique(quantile(X_orig[[.x]],probs = seq(0, 1, 0.05))))
 names(cov_quantile) <- cov
 
 dummy_var_names <- colnames(X_orig)[!colnames(X_orig) %in% cov]
-dummy_zeros <- map(dummy_var_names, \(x) 0)
+dummy_zeros <- map(dummy_var_names, \(x) 0)  # Variable importance of FE is all zero
 names(dummy_zeros) <- dummy_var_names
 X_test <- expand_grid(!!!cov_quantile,
                       !!!dummy_zeros
@@ -233,10 +235,14 @@ cate_test_df |>
            (prcp == unique(cate_test_df$prcp)[4])) |> 
   mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
          upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
-  ggplot(aes(x = avg_wind_speed, y = tau_hat)) +
-  geom_line() +
-  geom_line(aes(x = avg_wind_speed, y = lower), linetype = "dashed") +
-  geom_line(aes(x = avg_wind_speed, y = upper), linetype = "dashed")
+  ggplot(aes(x = avg_wind_speed, y = tau_hat,)) +
+  geom_line(linewidth = 1, color = "#E69F00") +
+  geom_line(aes(x = avg_wind_speed, y = lower), 
+            linetype = "dashed", linewidth = 1, color = "#E69F00") +
+  geom_line(aes(x = avg_wind_speed, y = upper), 
+            linetype = "dashed", linewidth = 1, color = "#E69F00") +
+  labs(x = "\n Wind speed", y = "CATE\n") +
+  theme_custom
 
 cate_test_df |> 
   filter((avg_wind_speed == median(avg_wind_speed)) & 
@@ -244,17 +250,45 @@ cate_test_df |>
   mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
          upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
   ggplot(aes(x = tmax, y = tau_hat)) +
-  geom_line() +
-  geom_line(aes(x = tmax, y = lower), linetype = "dashed") +
-  geom_line(aes(x = tmax, y = upper), linetype = "dashed")
+  geom_line(linewidth = 1, color = "#56B4E9") +
+  geom_line(aes(x = tmax, y = lower), 
+            linetype = "dashed", linewidth = 1, color = "#56B4E9") +
+  geom_line(aes(x = tmax, y = upper), 
+            linetype = "dashed", linewidth = 1, color = "#56B4E9") +
+  labs(x = "\n Temperature", y = "CATE\n") +
+  theme_custom
+
+# T-test for heterogeneity along wind and temperature
+high_wind <- cate_df$avg_wind_speed > median(cate_df$avg_wind_speed)
+ate_wind_high <- average_treatment_effect(forest_cluster, 
+                                          subset = high_wind, target.sample = "overlap")
+ate_wind_low <- average_treatment_effect(forest_cluster,
+                                         subset = !high_wind, target.sample = "overlap")
+round(ate_wind_high[1] - ate_wind_low[1], 3) -
+  round(qnorm(0.975) * sqrt(ate_wind_high[2]^2 + ate_wind_low[2]^2), 3)
+round(ate_wind_high[1] + ate_wind_low[1], 3) +
+  round(qnorm(0.975) * sqrt(ate_wind_high[2] ^2 + ate_wind_low[2] ^ 2), 3)
+
+high_temp <- cate_df$tmax > median(cate_df$tmax)
+ate_temp_high <- average_treatment_effect(forest_cluster, 
+                                          subset = high_temp, target.sample = "overlap")
+ate_temp_low <- average_treatment_effect(forest_cluster,
+                                         subset = !high_temp, target.sample = "overlap")
+round(ate_temp_high[1] - ate_temp_low[1], 3) -
+  round(qnorm(0.975) * sqrt(ate_temp_high[2]^2 + ate_temp_low[2]^2), 3)
+round(ate_temp_high[1] + ate_temp_low[1], 3) +
+  round(qnorm(0.975) * sqrt(ate_temp_high[2] ^2 + ate_temp_low[2] ^ 2), 3)
 
 
 
 
-cate_test_df |> 
-  filter(tmax == median(tmax)) |> 
-  filter(prcp == 3.65)
- 
+
+
+
+
+
+
+
 
 
 
