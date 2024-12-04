@@ -91,6 +91,9 @@ gt(summary_data@data) |>
   tab_footnote(footnote = footnote) |> 
   cols_align(align = "center",
              columns = 2:5) |> 
+  tab_options(table.font.size = "10pt",
+              table.width = pct(100),
+              footnotes.font.size = "10pt") |> 
   gtsave("table_4_rep.tex", path = file.path(output_path, "tables"))
 
 
