@@ -144,21 +144,22 @@ cm_cate <- c("treatment" = "Treatment (downwind)",
              "tmax" = "Daily maximum temperature",
              "valuePRCP_MIDWAY" = "Daily precipitation",
              "avg_wind_speed" = "Daily average wind speed")
-add_rows <- tibble(term = c("Route \U00D7 side fixed effects", 
+add_rows <- tibble(term = c("",
+                            "Route \U00D7 side fixed effects", 
                             "Route \U00D7 side weather interaction",
                             "Side fixed effects", 
                             "Side weather interaction"),
-                   col1 = c("X", "X", NA, NA),
-                   col2 = c(NA, NA, "X", "X"))
-attr(add_rows, "position") <- c(9:12)
+                   col1 = c(NA, "X", "X", NA, NA),
+                   col2 = c(NA, NA, NA, "X", "X"))
+attr(add_rows, "position") <- c(3, 10:13)
 
 msummary(panels, fmt = 4, shape = "rbind",
          coef_map = cm_cate, gof_map = gm,
          add_rows = add_rows,
          output = "gt") |> 
   sub_missing(missing_text = "") |> 
-  tab_row_group(rows = 1:2, label = panel_a_title) |> 
-  tab_row_group(rows = 3:13, label = panel_b_title) |> 
+  tab_row_group(rows = 1:3, label = panel_a_title) |> 
+  tab_row_group(rows = 4:13, label = panel_b_title) |> 
   row_group_order(groups = c(panel_a_title, panel_b_title)) |> 
   # tab_footnote(footnote = footnote) |> 
   tab_options(table.font.size = "10pt",
