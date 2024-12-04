@@ -236,11 +236,8 @@ cate_test_df |>
   mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
          upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
   ggplot(aes(x = avg_wind_speed, y = tau_hat,)) +
-  geom_line(linewidth = 1, color = "#E69F00") +
-  geom_line(aes(x = avg_wind_speed, y = lower), 
-            linetype = "dashed", linewidth = 1, color = "#E69F00") +
-  geom_line(aes(x = avg_wind_speed, y = upper), 
-            linetype = "dashed", linewidth = 1, color = "#E69F00") +
+  geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#69b3a2", alpha = 0.5) +
+  geom_line(linewidth = 0.8, color = "black", alpha = 0.5) +
   labs(x = "\n Wind speed", y = "CATE\n") +
   theme_custom
 
@@ -250,11 +247,8 @@ cate_test_df |>
   mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
          upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
   ggplot(aes(x = tmax, y = tau_hat)) +
-  geom_line(linewidth = 1, color = "#56B4E9") +
-  geom_line(aes(x = tmax, y = lower), 
-            linetype = "dashed", linewidth = 1, color = "#56B4E9") +
-  geom_line(aes(x = tmax, y = upper), 
-            linetype = "dashed", linewidth = 1, color = "#56B4E9") +
+  geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#69b3a2", alpha = 0.5) +
+  geom_line(linewidth = 0.8, color = "black", alpha = 0.5) +
   labs(x = "\n Temperature", y = "CATE\n") +
   theme_custom
 
