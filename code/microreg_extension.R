@@ -18,7 +18,9 @@ micro_data <- micro_data |>
   filter(insample == 1) |> 
   drop_na(any_of(vars_all)) |> 
   mutate(across(c(routeside), as.numeric),
-         route_id = as.numeric(factor(route_num1_mod)))
+         route_id = as.numeric(factor(route_num1_mod,
+                                      levels = c("I290", "I55", "I57", "I90_A", 
+                                                 "I90_B", "I90_C", "I94"))))
 
 # Focus on violent crimes
 violent_data <- micro_data |> 
@@ -27,7 +29,7 @@ violent_data <- micro_data |>
 # Create cluster, treatment, and outcome vectors,
 # and features (covariate) matrix
 route_id <- violent_data$route_id
-X_raw <- violent_data |> select(all_of(c(fe_cov, weather_cov)), dummies)
+X_raw <- violent_data |> select(all_of(c(fe_cov, weather_cov)))
 D <- violent_data |> pull(treatment)
 Y <- violent_data |> pull("stand_crimes")
 
@@ -167,6 +169,13 @@ msummary(panels, fmt = 4, shape = "rbind",
               footnotes.font.size = "10pt")
 
 # CATE visuals -----------------------------------------------------------------
+theme_custom <- theme_minimal() +
+  theme(legend.title = element_blank(),
+        panel.border = element_rect(color = "grey", fill = NA),
+        axis.title = element_text(size = 12,),
+        axis.text = element_text(size = 11),
+        legend.text = element_text(size = 10))
+
 # Explore effect heterogeneity with clustered model
 forest_cluster <- forest_results[[2]]
 X_orig <- forest_cluster$X.orig
@@ -175,18 +184,27 @@ cate_df <- tibble(
   tau_hat = tau_pred$predictions,
   var_hat = tau_pred$variance.estimates,
   tmax = forest_cluster$X.orig$tmax,
-  PRCP_MIDWAY = forest_cluster$X.orig$valuePRCP_MIDWAY,
+  prcp = forest_cluster$X.orig$valuePRCP_MIDWAY,
   avg_wind_speed = forest_cluster$X.orig$avg_wind_speed,
   route_id = route_id
 )
+
+# Boxplot of CATE by interstate
 cate_df |> 
-  group_by(route_id) |> 
-  summarize(avg = mean(tau_hat))
+  mutate(route_id = factor(route_id, 
+                           labels = c("I290", "I55", "I57", "I90_A", 
+                                      "I90_B", "I90_C", "I94"))) |> 
+  ggplot(aes(route_id, y = tau_hat, group = route_id, fill = route_id)) +
+  geom_violin(width = 1, alpha = 0.8) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5) +
+  labs(x = "Interstate", y = "")
+  theme_custom +
+  scale_fill_okabeito() +
+  theme(legend.position = "none")
 
 
 
 wind_quantile <- unique(quantile(X_orig[["avg_wind_speed"]], probs = seq(0, 1, 0.05)))
-
 
 
 cov <- c("tmax", "valuePRCP_MIDWAY", "avg_wind_speed")
@@ -209,11 +227,32 @@ cate_test_df <- tibble(
 )
 
 cate_test_df |> 
+  filter((tmax == median(tmax)) & 
+           (prcp == unique(cate_test_df$prcp)[4])) |> 
+  mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
+         upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
+  ggplot(aes(x = avg_wind_speed, y = tau_hat)) +
+  geom_line() +
+  geom_line(aes(x = avg_wind_speed, y = lower), linetype = "dashed") +
+  geom_line(aes(x = avg_wind_speed, y = upper), linetype = "dashed")
+
+cate_test_df |> 
+  filter((avg_wind_speed == median(avg_wind_speed)) & 
+           (prcp == unique(cate_test_df$prcp)[4])) |> 
+  mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
+         upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
   ggplot(aes(x = tmax, y = tau_hat)) +
-  geom_point()
+  geom_line() +
+  geom_line(aes(x = tmax, y = lower), linetype = "dashed") +
+  geom_line(aes(x = tmax, y = upper), linetype = "dashed")
 
 
 
+
+cate_test_df |> 
+  filter(tmax == median(tmax)) |> 
+  filter(prcp == 3.65)
+ 
 
 
 
