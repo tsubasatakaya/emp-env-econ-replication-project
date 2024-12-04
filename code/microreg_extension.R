@@ -10,7 +10,7 @@ fe_cov <- c("routeside")
 weather_cov <- c("tmax", "valuePRCP_MIDWAY", "avg_wind_speed")
 treatment <- "treatment"
 dvs <- c("violent", "stand_crimes")
-vars_all <- c(fe_cov, weather_cov, dummies, treatment, dvs)
+vars_all <- c(fe_cov, weather_cov, treatment, dvs)
 
 # Drop missing values
 # and create route cluster ID
@@ -45,39 +45,13 @@ make_X <- function(X_raw, fe) {
 }
 
 X_no_cluster <- make_X(X_raw, fe = c("routeside"))
+X_cluster <- make_X(X_raw, fe = c("routeside", "route_id"))
 
-X_no_cluster <- X_raw |> 
-  select(all_of(c("routeside", weather_cov)))
-X_no_cluster <- dummy_cols(X_no_cluster, select_columns = "routeside",
-                           remove_first_dummy = TRUE) |> select(-routeside)
-dummy_no_cluster <- colnames(X_no_cluster)[str_detect(colnames(X_no_cluster), 
-                                                      paste0("routeside", "(_\\d)?"))]
-X_no_cluster <- X_no_cluster |> 
-  mutate(across(all_of(dummy_no_cluster), .fns = ~ . * tmax, .names = "{.col}_x_tmax"),
-         across(all_of(dummy_no_cluster), .fns = ~ . * valuePRCP_MIDWAY, .names = "{.col}_x_prcp"))
-
-X_cluster <- X_raw |> 
-  select(all_of(c("routeside", "route_id", weather_cov)))
-X_cluster <- dummy_cols(X_cluster, select_columns = "routeside",
-                        remove_first_dummy = TRUE) |> select(-routeside)
-X_cluster <- dummy_cols(X_cluster, select_columns = "route_id",
-                        remove_first_dummy = TRUE) |> select(-route_id)
-dummy_cluster <- colnames(X_cluster)[str_detect(colnames(X_cluster), 
-                                                paste0("routeside", "(_\\d)?"))]
-X_cluster <- X_cluster |> 
-  mutate(across(all_of(dummy_cluster), .fns = ~ . * tmax, .names = "{.col}_x_tmax"),
-         across(all_of(dummy_cluster), .fns = ~ . * valuePRCP_MIDWAY, .names = "{.col}_x_prcp"))
 X_list <- list(X_no_cluster, X_cluster)
 
 # Model fitting ----------------------------------------------------------------
 # Create a list of covariates, FE, and arguments for loop
 model_tags <- c("Non-clustered", "Clustered")
-cov_list <- list(
-  c(fe_cov, weather_cov),
-  c(weather_cov, dummies)
-)
-
-fe <- c("routeside", "side_dummy")
 
 args_list <- list(
   list(Y = Y,
@@ -93,19 +67,9 @@ args_list <- list(
 # Iteratively fit causal forests
 forest_results <- list()
 for (i in seq_along(model_tags)) {
-  X <- X_raw |> 
-    select(all_of(cov_list[[i]]))
-  if (nrow(unique(X[fe[i]])) != 2) {
-    X <- dummy_cols(X, select_columns = fe[i],
-                    remove_first_dummy = TRUE) |> select(-all_of(fe[i]))
-  }
-  dummy_colnames <- colnames(X)[str_detect(colnames(X), paste0(fe[i], "(_\\d)?"))]
-  X <- X |> 
-    mutate(across(all_of(dummy_colnames), .fns = ~ . * tmax, .names = "{.col}_x_tmax"),
-           across(all_of(dummy_colnames), .fns = ~ . * valuePRCP_MIDWAY, .names = "{.col}_x_prcp"))
   
   args <- args_list[[i]]
-  args <- append(args, list(X = X))
+  args <- append(args, list(X = X_list[[i]]))
   
   print(paste("Fitting", model_tags[i], "model..."))
   forest_results[[i]] <- do.call(causal_forest, args)
@@ -184,10 +148,9 @@ cm_cate <- c("treatment" = "Treatment (downwind)",
 add_rows <- tibble(term = c("",
                             "Route \U00D7 side fixed effects", 
                             "Route \U00D7 side weather interaction",
-                            "Side fixed effects", 
-                            "Side weather interaction"),
-                   col1 = c(NA, "X", "X", NA, NA),
-                   col2 = c(NA, NA, NA, "X", "X"))
+                            "Route fixed effects"),
+                   col1 = c(NA, "X", "X", NA),
+                   col2 = c(NA, "X", "X", "X"))
 attr(add_rows, "position") <- c(3, 10:13)
 
 msummary(panels, fmt = 4, shape = "rbind",
@@ -226,26 +189,16 @@ wind_quantile <- unique(quantile(X_orig[["avg_wind_speed"]], probs = seq(0, 1, 0
 
 
 
-
-
-
-
-
-
-
-
-
 cov <- c("tmax", "valuePRCP_MIDWAY", "avg_wind_speed")
 cov_quantile <- map(cov, ~ unique(quantile(X_orig[[.x]],probs = seq(0, 1, 0.05))))
 names(cov_quantile) <- cov
 
+dummy_var_names <- colnames(X_orig)[!colnames(X_orig) %in% cov]
+dummy_zeros <- map(dummy_var_names, \(x) 0)
+names(dummy_zeros) <- dummy_var_names
 X_test <- expand_grid(!!!cov_quantile,
-                      side_dummy = c(0, 1)
+                      !!!dummy_zeros
                       )
-X_test <- X_test |> 
-  mutate(side_dummy_x_tmax = side_dummy * tmax,
-         side_dummy_x_prcp = side_dummy * valuePRCP_MIDWAY)
-
 tau_pred_test <- predict(forest_cluster, X_test, estimate.variance = TRUE)
 cate_test_df <- tibble(
   tau_hat = tau_pred_test$predictions,
