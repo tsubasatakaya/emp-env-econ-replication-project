@@ -192,19 +192,21 @@ cate_df <- tibble(
 # Boxplot of CATE by interstate
 cate_df |> 
   mutate(route_id = factor(route_id, 
-                           labels = c("I290", "I55", "I57", "I90_A", 
-                                      "I90_B", "I90_C", "I94"))) |> 
+                           labels = c("I290", "I55", "I57", "I90A", 
+                                      "I90B", "I90C", "I94"))) |> 
   ggplot(aes(route_id, y = tau_hat, group = route_id, fill = route_id)) +
   geom_violin(width = 1, alpha = 0.8) +
   geom_boxplot(width = 0.1, color = "black", alpha = 0.5) +
-  labs(x = "Interstate", y = "")
+  labs(x = "\nInterstate", y = "CATE\n") +
   theme_custom +
   scale_fill_okabeito() +
   theme(legend.position = "none")
 
-
-
-wind_quantile <- unique(quantile(X_orig[["avg_wind_speed"]], probs = seq(0, 1, 0.05)))
+cate_df |> 
+  ggplot(aes(x = tau_hat)) +
+  geom_histogram(bins = 30, color = "#e9ecef", fill = "#69b3a2", alpha = 0.7,) +
+  labs(x = "\n CATE", y = "Frequency\n") +
+  theme_custom 
 
 
 cov <- c("tmax", "valuePRCP_MIDWAY", "avg_wind_speed")
