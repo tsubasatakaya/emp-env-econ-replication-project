@@ -62,8 +62,8 @@ results <- c(ols_results, iv_results)
 results <- results[sort(names(results))]
 
 # Generate table --------------------------------------------------------------
-cm <- c("standardized_pm" = "Standardized PM\U2081\U2080 reading",
-        "fit_standardized_pm" = "Standardized PM\U2081\U2080 reading")
+cm <- c("standardized_pm" = "Standardized PM10 reading",
+        "fit_standardized_pm" = "Standardized PM10 reading")
 gof_f <- function(x) format(round(x, 2), big.mark = ",")
 gm <- list(
   list("raw" = "nobs", "clean" = "Observations", "fmt" = gof_f),
@@ -92,9 +92,8 @@ msummary(results, fmt = 4,
   tab_spanner(label = "IV", columns = c(4, 7), gather = FALSE) |> 
   tab_spanner(label = "Violent crimes", columns = 2:4) |> 
   tab_spanner(label = "Property crimes", columns = 5:7) |> 
-  tab_options(table.font.size = "10pt",
-              table.width = pct(100),
-              footnotes.font.size = "10pt") |> 
+  tab_options(table.font.size = "9pt",
+              table.width = pct(100),) |>
   gtsave("table_2_rep.tex", path = file.path(output_path, "tables"))
 
 
