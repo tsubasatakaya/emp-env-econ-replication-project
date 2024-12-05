@@ -116,7 +116,8 @@ summary_data |>
   tab_options(table.border.top.style = "hidden",
               heading.align = "left",
               table.font.size = "10pt",
-              table.width = pct(100),)
+              table.width = pct(100),) |> 
+  gtsave("table_1_rep.tex", path = file.path(output_path, "tables"))
 
 
 
