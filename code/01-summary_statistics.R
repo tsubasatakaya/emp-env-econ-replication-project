@@ -47,10 +47,25 @@ micro_summary <- micro_data |>
 colnames(micro_summary) <- c("variable", "mean", "sd")
 
 
-
 summary_data <- city_summary |>
   mutate(variable = as.character(variable)) |> 
-  bind_rows(micro_summary |> mutate(variable = as.character(variable)))
+  bind_rows(micro_summary |> mutate(variable = as.character(variable))) |> 
+  mutate(variable = case_match(variable,
+                               "total_violent" ~ "Daily citywide violent crime",
+                               "total_property" ~ "Daily citywide property crime",
+                               "PRCP_MIDWAY" ~ "Precipitation (mm)",
+                               "TMAX_MIDWAY" ~  "Maximum temperature (°C)",
+                               "avg_co_mean" ~ "Daily average CO (ppm)",
+                               "avg_no2_mean" ~ "Daily average NO2 (ppm)",
+                               "avg_ozone_mean" ~ "Daily average ozone (ppm)",
+                               "avg_pm10_mean" ~ "Daily average PM10 (mug/m3)",
+                               "wind_speed_kph" ~ "Wind speed (km/h)",
+                               "dew_point_avg" ~ "Dew point (°C)",
+                               "sealevel_pressure_avg" ~ "Air pressure (hpa)",
+                               "avg_sky_cover" ~ " Cloud cover sunrise to sunset (percent)",
+                               "violent_num" ~ "Daily interstate-side violent crimes",
+                               "nonviolent_num" ~ "Daily interstate-side property crimes"
+                               ))
 
 summary_data |> 
   gt() |> 
@@ -96,27 +111,19 @@ summary_data |>
   fmt_number(columns = c("sd"),
              rows = 8,
              decimals = 4) |> 
-  text_replace("total_violent", "Daily city-wide violent crime") |> 
-  text_replace("total_property", " Daily city-wide property crime") |> 
-  text_replace("PRCP_MIDWAY", " Precipitation (mm)") |> 
-  text_replace("TMAX_MIDWAY",  " Maximum temperature (°C)") |> 
-  text_replace("avg_co_mean", " Daily avg. carbon monoxide (ppm)") |> 
-  text_replace("avg_no2_mean", " Daily avg. NO2 (ppm)") |> 
-  text_replace("avg_ozone_mean", " Daily avg. ozone (ppm)") |> 
-  text_replace("avg_pm10_mean", " Daily avg. PM\U2081\U2080 (\U03BCg/m\U00B3)") |> 
-  text_replace("wind_speed_kph", " Wind speed (km/h)") |> 
-  text_replace("dew_point_avg", " Dew point (°C)") |> 
-  text_replace("sealevel_pressure_avg", " Air pressure (hpa)") |> 
-  text_replace("avg_sky_cover", " Cloud cover sunrise to sunset (percent)") |> 
-  text_replace("violent_num", "Daily interstate-side violent crimes") |> 
-  text_replace("nonviolent_num", "Daily interstate-side property crimes") |> 
   cols_align(align = "left",
              columns = "variable") |> 
+  cols_align(align = "center",
+             columns = "mean") |> 
+  cols_align(align = "center",
+             columns = "sd") |> 
+  cols_width(mean ~ px(80),
+             sd ~ px(80),) |> 
   sub_missing(missing_text = "") |> 
   tab_options(table.border.top.style = "hidden",
               heading.align = "left",
               table.font.size = "10pt",
-              table.width = pct(100),) |> 
+              table.width = pct(100),) |>
   gtsave("table_1_rep.tex", path = file.path(output_path, "tables"))
 
 
