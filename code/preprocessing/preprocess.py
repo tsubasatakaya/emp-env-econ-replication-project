@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import polars as pl
 import polars.selectors as cs
+from aiofiles.os import makedirs
 
 
 class DataPreprocessor:
@@ -13,6 +14,8 @@ class DataPreprocessor:
                  output_data_path: Path,):
         self.input_data_path = input_data_path
         self.output_data_path = output_data_path
+
+        makedirs(output_data_path, exist_ok=True)
 
     def _extract_crime_data(self):
         crime_data = (pl.read_csv(self.input_data_path / "chicago_crime.csv")
