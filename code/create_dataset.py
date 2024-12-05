@@ -10,7 +10,6 @@ output_data_path = Path("data")
 preprocessor = DataPreprocessor(input_data_path,
                                 output_data_path,)
 
-# preprocessor.create_citylevel_dataset(process_raw_data=True)
-# preprocessor.save_original_micro_dataset()
-preprocessor.create_micro_dataset(wind_dir_threshold=60)
-preprocessor.create_micro_dataset(wind_dir_threshold=0)
+preprocessor.create_citylevel_dataset(process_raw_data=True)
+preprocessor.save_original_micro_dataset()
+# preprocessor.create_micro_dataset(wind_dir_threshold=60)
