@@ -204,31 +204,6 @@ class DataPreprocessor:
         )
                    )
 
-        # # Save hourly data
-        # hourly_co_data = (co_data
-        #                   .filter(
-        #     pl.col("sample_duration") == "1 HOUR")
-        #                   .with_columns(
-        #     pl.col("sample_measurement")
-        #     .is_not_null()
-        #     .cast(pl.Int64)
-        #     .sum()
-        #     .over(["monitor_id", "date_local"])
-        #     .alias("num_hrly_obs"))
-        #                   .filter(
-        #     pl.col("num_hrly_obs") >= 18)
-        #                   .with_columns(
-        #     pl.col("date_local").str.to_datetime(format="%Y-%m-%d"))
-        #                   .with_columns(
-        #     pl.col("date_local").dt.date().alias("date"),
-        #     pl.col("24_hour_local").str.split(":").list.get(0).cast(pl.Int64).alias("hour"))
-        #                   .rename({"sample_measurement": "co_hrly"})
-        #                   .select("latitude", "longitude", "datum", "state_code", "county_code",
-        #                           "monitor_id", "site_num", "poc", "co_hrly", "date", "hour")
-        #                   )
-        #
-        # hourly_co_data.write_csv(self.output_data_path/"chicago_co_2000_2012_hourly.csv")
-
         # Save daily data
         daily_co_data = (co_data
                          .filter(
@@ -277,31 +252,6 @@ class DataPreprocessor:
              + "_" + pl.col("poc").cast(pl.String)).alias("monitor_id")
         )
         )
-
-        # # Save hourly data
-        # hourly_pm_data = (pm_data
-        #                   .filter(
-        #     pl.col("sample_duration") == "1 HOUR")
-        #                   .with_columns(
-        #     pl.col("sample_measurement")
-        #     .is_not_null()
-        #     .cast(pl.Int64)
-        #     .sum()
-        #     .over(["monitor_id", "date_local"])
-        #     .alias("num_hrly_obs"))
-        #                   .filter(
-        #     pl.col("num_hrly_obs") >= 18)
-        #                   .with_columns(
-        #     pl.col("date_local").str.to_datetime(format="%Y-%m-%d"))
-        #                   .with_columns(
-        #     pl.col("date_local").dt.date().alias("date"),
-        #     pl.col("24_hour_local").str.split(":").list.get(0).cast(pl.Int64).alias("hour"))
-        #                   .rename({"sample_measurement": "pm10hrly"})
-        #                   .select("latitude", "longitude", "datum", "state_code", "county_code",
-        #                           "monitor_id", "site_num", "poc", "pm10hrly", "date", "hour")
-        #                   )
-        #
-        # hourly_pm_data.write_csv(self.output_data_path/"chicago_pm10_2000_2012_hourly.csv")
 
         # Save daily data
         daily_pm_data = (pm_data
@@ -401,33 +351,6 @@ class DataPreprocessor:
         )
         )
 
-        # # Save hourly data
-        # hourly_no_data = (no_data
-        #                   .filter(
-        #     pl.col("sample_duration") == "1 HOUR")
-        #                   .with_columns(
-        #     pl.col("sample_measurement")
-        #     .is_not_null()
-        #     .cast(pl.Int64)
-        #     .sum()
-        #     .over(["monitor_id", "date_local"])
-        #     .alias("num_hrly_obs"))
-        #                   .filter(
-        #     pl.col("num_hrly_obs") >= 18)
-        #                   .with_columns(
-        #     pl.col("date_local").str.to_datetime(format="%Y-%m-%d"))
-        #                   .with_columns(
-        #     pl.col("date_local").dt.date().alias("date"),
-        #     pl.col("24_hour_local").str.split(":").list.get(0).cast(pl.Int64).alias("hour"))
-        #                   .rename({"sample_measurement": "no2_hrly"})
-        #                   .with_columns(
-        #     (pl.col("no2_hrly") / 1000).alias("no2_hrly"))
-        #                   .select("latitude", "longitude", "datum", "state_code", "county_code",
-        #                           "monitor_id", "site_num", "poc", "no2_hrly", "date", "hour")
-        #                   )
-        #
-        # hourly_no_data.write_csv(self.output_data_path/"chicago_no2_2000_2012_hourly.csv")
-
         # Save daily data
         daily_no_data = (no_data
                          .filter(
@@ -495,31 +418,6 @@ class DataPreprocessor:
             pl.col("horizontal_accuracy").cast(pl.Float64)
         )
         )
-
-        # # Save hourly data
-        # hourly_ozone_data = (ozone_data
-        #                      .filter(
-        #     pl.col("sample_duration") == "1 HOUR")
-        #                      .with_columns(
-        #     pl.col("sample_measurement")
-        #     .is_not_null()
-        #     .cast(pl.Int64)
-        #     .sum()
-        #     .over(["monitor_id", "date_local"])
-        #     .alias("num_hrly_obs"))
-        #                      .filter(
-        #     pl.col("num_hrly_obs") >= 18)
-        #                      .with_columns(
-        #     pl.col("date_local").str.to_datetime(format="%Y-%m-%d"))
-        #                      .with_columns(
-        #     pl.col("date_local").dt.date().alias("date"),
-        #     pl.col("24_hour_local").str.split(":").list.get(0).cast(pl.Int64).alias("hour"))
-        #                      .rename({"sample_measurement": "ozone_hrly"})
-        #                      .select("latitude", "longitude", "datum", "state_code", "county_code",
-        #                              "monitor_id", "site_num", "poc", "ozone_hrly", "date", "hour")
-        #                      )
-        #
-        # hourly_ozone_data.write_csv(self.output_data_path/"chicago_ozone_2000_2012_hourly.csv")
 
         # Save daily data
         daily_ozone_data = (ozone_data
@@ -700,7 +598,7 @@ class DataPreprocessor:
                    .with_columns(
             pl.mean_horizontal(pl.col("^avg.*$")).alias("avg_co_mean"),
             pl.mean_horizontal(pl.col("^max.*$")).alias("max_co_mean"))
-                   .drop("avg_co_31_6004_1")  # TODO: author did not drop max_co_31_6004_1
+                   .drop("avg_co_31_6004_1")
                    )
 
         avg_cols_drop_290 = co_temp.select(pl.col("^avg.*$").exclude("avg_co_mean")).columns
@@ -1388,7 +1286,6 @@ if __name__ == '__main__':
     input_data_path = source_path / "Raw-Data"
     output_data_path = Path("data")
     preprocessor = DataPreprocessor(input_data_path, output_data_path)
-    # preprocessor._extract_crime_interstate_distance()
 
 
 
