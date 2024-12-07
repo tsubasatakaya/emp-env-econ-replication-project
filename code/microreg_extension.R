@@ -97,8 +97,8 @@ cm_calib <- c("mean.forest.prediction" = "Mean forest prediction",
 
 add_rows <- tibble(term = c("Route \U00D7 side fixed effects", 
                             "Route \U00D7 side weather interaction",
-                            "Side fixed effects", 
-                            "Side weather interaction"),
+                            "Route fixed effects", 
+                            "Route weather interaction"),
                    col1 = c("X", "X", NA, NA),
                    col2 = c(NA, NA, "X", "X"))
 attr(add_rows, "position") <- c(5:8)
@@ -106,7 +106,11 @@ attr(add_rows, "position") <- c(5:8)
 
 msummary(calibration_res, fmt = 3,
          coef_map = cm_calib, gof_map = gm,
-         add_rows = add_rows,)
+         add_rows = add_rows,
+         output = "gt") |> 
+  tab_options(table.font.size = "9pt",
+              table.width = pct(100),) |>
+  gtsave("grf_calibration.tex", path = file.path(output_path, "tables"))
 
 
 # Generate table for ATO and CATE by covariate
