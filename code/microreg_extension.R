@@ -97,11 +97,10 @@ cm_calib <- c("mean.forest.prediction" = "Mean forest prediction",
 
 add_rows <- tibble(term = c("Route \U00D7 side fixed effects", 
                             "Route \U00D7 side weather interaction",
-                            "Route fixed effects", 
-                            "Route weather interaction"),
-                   col1 = c("X", "X", NA, NA),
-                   col2 = c(NA, NA, "X", "X"))
-attr(add_rows, "position") <- c(5:8)
+                            "Route fixed effects"),
+                   col1 = c("X", "X", NA),
+                   col2 = c("X", "X", "X"))
+attr(add_rows, "position") <- c(5:7)
 
 
 msummary(calibration_res, fmt = 3,
@@ -148,7 +147,7 @@ panels <- list(
   linproj_res
 )
 panel_a_title <- "Average treatment effect for the overlap (ATO)"
-panel_b_title <- "Conditional average treatment effect"
+panel_b_title <- "Conditional average treatment effect (CATE)"
 cm_cate <- c("treatment" = "Treatment (downwind)",
              "valueTMAX_MIDWAY" = "Daily maximum temperature",
              "valuePRCP_MIDWAY" = "Daily precipitation",
@@ -169,8 +168,12 @@ msummary(panels, fmt = 4, shape = "rbind",
   tab_row_group(rows = 1:3, label = panel_a_title) |> 
   tab_row_group(rows = 4:13, label = panel_b_title) |> 
   row_group_order(groups = c(panel_a_title, panel_b_title)) |> 
+  cols_width(1 ~ px(300),
+             2 ~ px(100),
+             3~ px(100)) |> 
   tab_options(table.font.size = "9pt",
-              table.width = pct(100),)
+              table.width = pct(100),) |> 
+  gtsave("ate_cate.tex", path = file.path(output_path, "tables"))
 
 # CATE visuals -----------------------------------------------------------------
 theme_custom <- theme_minimal() +
