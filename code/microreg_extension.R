@@ -108,6 +108,7 @@ msummary(calibration_res, fmt = 3,
          coef_map = cm_calib, gof_map = gm,
          add_rows = add_rows,
          output = "gt") |> 
+  sub_missing(missing_text = "") |> 
   tab_options(table.font.size = "9pt",
               table.width = pct(100),) |>
   gtsave("grf_calibration.tex", path = file.path(output_path, "tables"))
