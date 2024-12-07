@@ -30,7 +30,7 @@ violent_data <- micro_data |>
 # Create cluster, treatment, and outcome vectors,
 # and features (covariate) matrix
 route_id <- violent_data$route_id
-X_raw <- violent_data |> select(all_of(c(fe_cov, weather_cov)))
+X_raw <- violent_data |> select(all_of(c(fe_cov, weather_cov, "route_id")))
 D <- violent_data |> pull(treatment)
 Y <- violent_data |> pull("stand_crimes")
 
