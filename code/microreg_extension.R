@@ -206,8 +206,7 @@ cate_hist <- cate_df |>
   theme_custom 
 
 ggsave(file.path(output_path, "figures/cate_histogram.svg"), cate_hist,
-       width = 7, height = 4, units = "in", dpi = 300
-)
+       width = 7, height = 4, units = "in", dpi = 300)
 
 # T-test on effect heterogeneity by weather covariates
 high_temp <- cate_df$max_temp > median(cate_df$max_temp)
@@ -265,18 +264,7 @@ cate_test_df <- tibble(
   avg_wind_speed = X_test$avg_wind_speed
 )
 
-cate_test_df |> 
-  filter((max_temp == median(max_temp)) & 
-           (prcp == unique(cate_test_df$prcp)[4])) |> 
-  mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
-         upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
-  ggplot(aes(x = avg_wind_speed, y = tau_hat,)) +
-  geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#69b3a2", alpha = 0.5) +
-  geom_line(linewidth = 0.8, color = "black", alpha = 0.5) +
-  labs(x = "\n Wind speed", y = "CATE\n") +
-  theme_custom
-
-cate_test_df |> 
+temp_cate <- cate_test_df |> 
   filter((avg_wind_speed == median(avg_wind_speed)) & 
            (prcp == unique(cate_test_df$prcp)[4])) |> 
   mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
@@ -284,14 +272,49 @@ cate_test_df |>
   ggplot(aes(x = max_temp, y = tau_hat)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#69b3a2", alpha = 0.5) +
   geom_line(linewidth = 0.8, color = "black", alpha = 0.5) +
-  labs(x = "\n Maximum temperature", y = "CATE\n") +
+  geom_hline(yintercept = 0, linetype = "dotted", color = "black", alpha = 0.5) +
+  labs(x = "Maximum temperature", y = "CATE") +
+  theme_custom +
+  theme(plot.margin = margin(5, 10, 5, 3),
+        axis.title.y = element_text(margin = margin(0,0,0,0)),)
+  
+
+wind_cate <- cate_test_df |> 
+  filter((max_temp == median(max_temp)) & 
+           (prcp == unique(cate_test_df$prcp)[4])) |> 
+  mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
+         upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
+  ggplot(aes(x = avg_wind_speed, y = tau_hat,)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#69b3a2", alpha = 0.5) +
+  geom_line(linewidth = 0.8, color = "black", alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dotted", color = "black", alpha = 0.5) +
+  labs(x = "Wind speed", y = "CATE") +
+  theme_custom + 
+  theme(plot.margin = margin(5, 3, 5, 10),
+        axis.title.y = element_text(margin = margin(0,0,0,0)),)
+
+temp_wind_cate_plot <- grid.arrange(temp_cate, wind_cate, nrow = 1)
+temp_wind_cate_plot
+ggsave(file.path(output_path, "figures/cate_temp_wind.svg"), temp_wind_cate_plot,
+       width = 7, height = 4, units = "in", dpi = 300)
+
+
+cate_test_df |> 
+  filter((avg_wind_speed == median(avg_wind_speed)) & 
+           (max_temp == unique(cate_test_df$max_temp))) |> 
+  mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
+         upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
+  ggplot(aes(x = prcp, y = tau_hat)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#69b3a2", alpha = 0.5) +
+  geom_line(linewidth = 0.8, color = "black", alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dotted", color = "black", alpha = 0.5) +
+  labs(x = "Precipitation", y = "CATE") +
   theme_custom
 
 
 
-
 # Violin plot of CATE by interstate
-cate_df |> 
+cate_by_interstate <- cate_df |> 
   mutate(route_id = factor(route_id, 
                            labels = c("I290", "I55", "I57", "I90A", 
                                       "I90B", "I90C", "I94"))) |> 
@@ -302,8 +325,8 @@ cate_df |>
   theme_custom +
   scale_fill_okabeito() +
   theme(legend.position = "none")
-
-
+ggsave(file.path(output_path, "figures/cate_by_interstate.svg"), cate_by_interstate,
+       width = 7, height = 4, units = "in", dpi = 300)
 
 
 
