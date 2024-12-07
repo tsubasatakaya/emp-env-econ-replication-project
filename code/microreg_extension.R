@@ -211,16 +211,17 @@ cate_df |>
 
 # Visualize partial effect of temperature and wind
 # Create test X from all combinations of 5% quantile values of each variable
-cov <- c("tmax", "valueTMAX_MIDWAY", "valuePRCP_MIDWAY", "avg_wind_speed")
+cov <- c("valueTMAX_MIDWAY", "valuePRCP_MIDWAY", "avg_wind_speed")
 cov_quantile <- map(cov, ~ unique(quantile(X_orig[[.x]],probs = seq(0, 1, 0.05))))
 names(cov_quantile) <- cov
 
-dummy_var_names <- colnames(X_orig)[!colnames(X_orig) %in% cov]
+dummy_var_names <- colnames(X_orig)[!colnames(X_orig) %in% c(cov, "tmax")]
 dummy_zeros <- map(dummy_var_names, \(x) 0)  # Variable importance of FE is all zero
 names(dummy_zeros) <- dummy_var_names
 X_test <- expand_grid(!!!cov_quantile,
                       !!!dummy_zeros
-                      )
+                      ) |> 
+  mutate(tmax = median(X_orig$tmax), .before = valueTMAX_MIDWAY)
 tau_pred_test <- predict(forest_cluster, X_test, estimate.variance = TRUE)
 cate_test_df <- tibble(
   tau_hat = tau_pred_test$predictions,
@@ -232,7 +233,7 @@ cate_test_df <- tibble(
 )
 
 cate_test_df |> 
-  filter((tmax == median(temp_max)) & 
+  filter((temp_max == median(temp_max)) & 
            (prcp == unique(cate_test_df$prcp)[4])) |> 
   mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
          upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
@@ -247,10 +248,10 @@ cate_test_df |>
            (prcp == unique(cate_test_df$prcp)[4])) |> 
   mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
          upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
-  ggplot(aes(x = tmax, y = tau_hat)) +
+  ggplot(aes(x = temp_max, y = tau_hat)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#69b3a2", alpha = 0.5) +
   geom_line(linewidth = 0.8, color = "black", alpha = 0.5) +
-  labs(x = "\n Temperature", y = "CATE\n") +
+  labs(x = "\n Maximum temperature", y = "CATE\n") +
   theme_custom
 
 # T-test for heterogeneity along wind and temperature
