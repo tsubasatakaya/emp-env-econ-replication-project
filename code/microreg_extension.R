@@ -1,8 +1,7 @@
 set.seed(424)
 
 micro_data <- read_csv(file.path(data_path, "micro_dataset_original.csv")) |> 
-  mutate(avg_wind_speed = avg_wind_speed / 10,
-         tmax = tmax / 10) |> 
+  mutate(avg_wind_speed = avg_wind_speed / 10) |> 
   arrange(date)
 
 # Prep ------------------------------------------------------------------------
