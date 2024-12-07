@@ -8,7 +8,7 @@ micro_data <- read_csv(file.path(data_path, "micro_dataset_original.csv")) |>
 # Prep ------------------------------------------------------------------------
 # Group relevant covariates
 fe_cov <- c("routeside")
-weather_cov <- c("tmax", "valuePRCP_MIDWAY", "avg_wind_speed")
+weather_cov <- c("tmax", "valueTMAX_MIDWAY", "valuePRCP_MIDWAY", "avg_wind_speed")
 treatment <- "treatment"
 dvs <- c("violent", "stand_crimes")
 vars_all <- c(fe_cov, weather_cov, treatment, dvs)
@@ -115,7 +115,8 @@ linproj_res <- list()
 for (i in seq_along(model_tags)) {
   cf <- forest_results[[i]]
   res <- best_linear_projection(cf,
-                                cf$X.orig[, c("tmax", "valuePRCP_MIDWAY", "avg_wind_speed")],
+                                cf$X.orig[, c("valueTMAX_MIDWAY", "valuePRCP_MIDWAY", 
+                                              "avg_wind_speed")],
                                 target.sample = "overlap",
                                 vcov.type = "HC1")
   linproj_res[[i]] <- res
@@ -145,7 +146,7 @@ panels <- list(
 panel_a_title <- "Average treatment effect for the overlap (ATO)"
 panel_b_title <- "Conditional average treatment effect"
 cm_cate <- c("treatment" = "Treatment (downwind)",
-             "tmax" = "Daily maximum temperature",
+             "valueTMAX_MIDWAY" = "Daily maximum temperature",
              "valuePRCP_MIDWAY" = "Daily precipitation",
              "avg_wind_speed" = "Daily average wind speed")
 add_rows <- tibble(term = c("",
@@ -164,10 +165,8 @@ msummary(panels, fmt = 4, shape = "rbind",
   tab_row_group(rows = 1:3, label = panel_a_title) |> 
   tab_row_group(rows = 4:13, label = panel_b_title) |> 
   row_group_order(groups = c(panel_a_title, panel_b_title)) |> 
-  # tab_footnote(footnote = footnote) |> 
-  tab_options(table.font.size = "10pt",
-              table.width = pct(100),
-              footnotes.font.size = "10pt")
+  tab_options(table.font.size = "9pt",
+              table.width = pct(100),)
 
 # CATE visuals -----------------------------------------------------------------
 theme_custom <- theme_minimal() +
@@ -184,7 +183,7 @@ tau_pred <- predict(forest_cluster, estimate.variance = TRUE)
 cate_df <- tibble(
   tau_hat = tau_pred$predictions,
   var_hat = tau_pred$variance.estimates,
-  tmax = forest_cluster$X.orig$tmax,
+  max_temp = forest_cluster$X.orig$valueTMAX_MIDWAY,
   prcp = forest_cluster$X.orig$valuePRCP_MIDWAY,
   avg_wind_speed = forest_cluster$X.orig$avg_wind_speed,
   route_id = route_id
@@ -212,7 +211,7 @@ cate_df |>
 
 # Visualize partial effect of temperature and wind
 # Create test X from all combinations of 5% quantile values of each variable
-cov <- c("tmax", "valuePRCP_MIDWAY", "avg_wind_speed")
+cov <- c("tmax", "valueTMAX_MIDWAY", "valuePRCP_MIDWAY", "avg_wind_speed")
 cov_quantile <- map(cov, ~ unique(quantile(X_orig[[.x]],probs = seq(0, 1, 0.05))))
 names(cov_quantile) <- cov
 
@@ -227,12 +226,13 @@ cate_test_df <- tibble(
   tau_hat = tau_pred_test$predictions,
   var_hat = tau_pred_test$variance.estimates,
   tmax = X_test$tmax,
+  temp_max = X_test$valueTMAX_MIDWAY,
   prcp  = X_test$valuePRCP_MIDWAY,
   avg_wind_speed = X_test$avg_wind_speed
 )
 
 cate_test_df |> 
-  filter((tmax == median(tmax)) & 
+  filter((tmax == median(temp_max)) & 
            (prcp == unique(cate_test_df$prcp)[4])) |> 
   mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
          upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
