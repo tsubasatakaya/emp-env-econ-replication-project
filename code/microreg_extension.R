@@ -209,18 +209,40 @@ ggsave(file.path(output_path, "figures/cate_histogram.svg"), cate_hist,
        width = 7, height = 4, units = "in", dpi = 300
 )
 
-# Violin plot of CATE by interstate
-cate_df |> 
-  mutate(route_id = factor(route_id, 
-                           labels = c("I290", "I55", "I57", "I90A", 
-                                      "I90B", "I90C", "I94"))) |> 
-  ggplot(aes(route_id, y = tau_hat, group = route_id, fill = route_id)) +
-  geom_violin(width = 1, alpha = 0.8) +
-  geom_boxplot(width = 0.1, color = "black", alpha = 0.5) +
-  labs(x = "\nInterstate", y = "CATE\n") +
-  theme_custom +
-  scale_fill_okabeito() +
-  theme(legend.position = "none")
+# T-test on effect heterogeneity by weather covariates
+high_temp <- cate_df$max_temp > median(cate_df$max_temp)
+ate_temp_high <- average_treatment_effect(forest_cluster, 
+                                          subset = high_temp, target.sample = "overlap")
+ate_temp_low <- average_treatment_effect(forest_cluster,
+                                         subset = !high_temp, target.sample = "overlap")
+round(ate_temp_high[1] - ate_temp_low[1], 3) -
+  round(qnorm(0.975) * sqrt(ate_temp_high[2]^2 + ate_temp_low[2]^2), 3)
+round(ate_temp_high[1] + ate_temp_low[1], 3) +
+  round(qnorm(0.975) * sqrt(ate_temp_high[2] ^2 + ate_temp_low[2] ^ 2), 3)
+
+high_prcp <- cate_df$prcp > median(cate_df$prcp)
+ate_prcp_high <- average_treatment_effect(forest_cluster, 
+                                          subset = high_prcp, target.sample = "overlap")
+ate_prcp_low <- average_treatment_effect(forest_cluster,
+                                         subset = !high_prcp, target.sample = "overlap")
+round(ate_prcp_high[1] - ate_prcp_low[1], 3) -
+  round(qnorm(0.975) * sqrt(ate_prcp_high[2]^2 + ate_prcp_low[2]^2), 3)
+round(ate_prcp_high[1] + ate_prcp_low[1], 3) +
+  round(qnorm(0.975) * sqrt(ate_prcp_high[2] ^2 + ate_prcp_low[2] ^ 2), 3)
+
+high_wind <- cate_df$avg_wind_speed > median(cate_df$avg_wind_speed)
+ate_wind_high <- average_treatment_effect(forest_cluster, 
+                                          subset = high_wind, target.sample = "overlap")
+ate_wind_low <- average_treatment_effect(forest_cluster,
+                                         subset = !high_wind, target.sample = "overlap")
+round(ate_wind_high[1] - ate_wind_low[1], 3) -
+  round(qnorm(0.975) * sqrt(ate_wind_high[2]^2 + ate_wind_low[2]^2), 3)
+round(ate_wind_high[1] + ate_wind_low[1], 3) +
+  round(qnorm(0.975) * sqrt(ate_wind_high[2] ^2 + ate_wind_low[2] ^ 2), 3)
+
+
+
+
 
 # Visualize partial effect of temperature and wind
 # Create test X from all combinations of 5% quantile values of each variable
@@ -265,30 +287,21 @@ cate_test_df |>
   labs(x = "\n Maximum temperature", y = "CATE\n") +
   theme_custom
 
-# T-test for heterogeneity along wind and temperature
-high_wind <- cate_df$avg_wind_speed > median(cate_df$avg_wind_speed)
-ate_wind_high <- average_treatment_effect(forest_cluster, 
-                                          subset = high_wind, target.sample = "overlap")
-ate_wind_low <- average_treatment_effect(forest_cluster,
-                                         subset = !high_wind, target.sample = "overlap")
-round(ate_wind_high[1] - ate_wind_low[1], 3) -
-  round(qnorm(0.975) * sqrt(ate_wind_high[2]^2 + ate_wind_low[2]^2), 3)
-round(ate_wind_high[1] + ate_wind_low[1], 3) +
-  round(qnorm(0.975) * sqrt(ate_wind_high[2] ^2 + ate_wind_low[2] ^ 2), 3)
-
-high_temp <- cate_df$max_temp > median(cate_df$max_temp)
-ate_temp_high <- average_treatment_effect(forest_cluster, 
-                                          subset = high_temp, target.sample = "overlap")
-ate_temp_low <- average_treatment_effect(forest_cluster,
-                                         subset = !high_temp, target.sample = "overlap")
-round(ate_temp_high[1] - ate_temp_low[1], 3) -
-  round(qnorm(0.975) * sqrt(ate_temp_high[2]^2 + ate_temp_low[2]^2), 3)
-round(ate_temp_high[1] + ate_temp_low[1], 3) +
-  round(qnorm(0.975) * sqrt(ate_temp_high[2] ^2 + ate_temp_low[2] ^ 2), 3)
 
 
 
-
+# Violin plot of CATE by interstate
+cate_df |> 
+  mutate(route_id = factor(route_id, 
+                           labels = c("I290", "I55", "I57", "I90A", 
+                                      "I90B", "I90C", "I94"))) |> 
+  ggplot(aes(route_id, y = tau_hat, group = route_id, fill = route_id)) +
+  geom_violin(width = 1, alpha = 0.8) +
+  geom_boxplot(width = 0.1, color = "black", alpha = 0.5) +
+  labs(x = "Interstate", y = "CATE") +
+  theme_custom +
+  scale_fill_okabeito() +
+  theme(legend.position = "none")
 
 
 
