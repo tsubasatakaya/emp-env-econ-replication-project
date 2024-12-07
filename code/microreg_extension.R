@@ -7,7 +7,7 @@ micro_data <- read_csv(file.path(data_path, "micro_dataset_original.csv")) |>
 # Prep ------------------------------------------------------------------------
 # Group relevant covariates
 fe_cov <- c("routeside")
-weather_cov <- c("tmax", "valueTMAX_MIDWAY", "valuePRCP_MIDWAY", "avg_wind_speed")
+weather_cov <- c("valueTMAX_MIDWAY", "valuePRCP_MIDWAY", "avg_wind_speed")
 treatment <- "treatment"
 dvs <- c("violent", "stand_crimes")
 vars_all <- c(fe_cov, weather_cov, treatment, dvs)
@@ -41,7 +41,7 @@ make_X <- function(X_raw, fe) {
     select(-all_of(fe))
   int_dummy <- colnames(X)[str_detect(colnames(X), paste0("routeside", "(_\\d)?"))]
   X <- X |> 
-    mutate(across(all_of(int_dummy), .fns = ~ . * tmax, .names = "{.col}_x_tmax"),
+    mutate(across(all_of(int_dummy), .fns = ~ . * valueTMAX_MIDWAY, .names = "{.col}_x_max_temp"),
            across(all_of(int_dummy), .fns = ~ . * valuePRCP_MIDWAY, .names = "{.col}_x_prcp"))
   return(X)
 }
@@ -214,25 +214,23 @@ cov <- c("valueTMAX_MIDWAY", "valuePRCP_MIDWAY", "avg_wind_speed")
 cov_quantile <- map(cov, ~ unique(quantile(X_orig[[.x]],probs = seq(0, 1, 0.05))))
 names(cov_quantile) <- cov
 
-dummy_var_names <- colnames(X_orig)[!colnames(X_orig) %in% c(cov, "tmax")]
+dummy_var_names <- colnames(X_orig)[!colnames(X_orig) %in% c(cov)]
 dummy_zeros <- map(dummy_var_names, \(x) 0)  # Variable importance of FE is all zero
 names(dummy_zeros) <- dummy_var_names
 X_test <- expand_grid(!!!cov_quantile,
                       !!!dummy_zeros
-                      ) |> 
-  mutate(tmax = median(X_orig$tmax), .before = valueTMAX_MIDWAY)
+                      )
 tau_pred_test <- predict(forest_cluster, X_test, estimate.variance = TRUE)
 cate_test_df <- tibble(
   tau_hat = tau_pred_test$predictions,
   var_hat = tau_pred_test$variance.estimates,
-  tmax = X_test$tmax,
-  temp_max = X_test$valueTMAX_MIDWAY,
+  max_temp = X_test$valueTMAX_MIDWAY,
   prcp  = X_test$valuePRCP_MIDWAY,
   avg_wind_speed = X_test$avg_wind_speed
 )
 
 cate_test_df |> 
-  filter((temp_max == median(temp_max)) & 
+  filter((max_temp == median(max_temp)) & 
            (prcp == unique(cate_test_df$prcp)[4])) |> 
   mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
          upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
@@ -247,7 +245,7 @@ cate_test_df |>
            (prcp == unique(cate_test_df$prcp)[4])) |> 
   mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
          upper = tau_hat + sqrt(var_hat) * qnorm(0.975)) |> 
-  ggplot(aes(x = temp_max, y = tau_hat)) +
+  ggplot(aes(x = max_temp, y = tau_hat)) +
   geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#69b3a2", alpha = 0.5) +
   geom_line(linewidth = 0.8, color = "black", alpha = 0.5) +
   labs(x = "\n Maximum temperature", y = "CATE\n") +
@@ -264,7 +262,7 @@ round(ate_wind_high[1] - ate_wind_low[1], 3) -
 round(ate_wind_high[1] + ate_wind_low[1], 3) +
   round(qnorm(0.975) * sqrt(ate_wind_high[2] ^2 + ate_wind_low[2] ^ 2), 3)
 
-high_temp <- cate_df$tmax > median(cate_df$tmax)
+high_temp <- cate_df$max_temp > median(cate_df$max_temp)
 ate_temp_high <- average_treatment_effect(forest_cluster, 
                                           subset = high_temp, target.sample = "overlap")
 ate_temp_low <- average_treatment_effect(forest_cluster,
