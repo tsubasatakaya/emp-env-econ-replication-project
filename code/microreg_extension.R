@@ -179,9 +179,11 @@ msummary(panels, fmt = 4, shape = "rbind",
 theme_custom <- theme_minimal() +
   theme(legend.title = element_blank(),
         panel.border = element_rect(color = "grey", fill = NA),
-        axis.title = element_text(size = 12,),
-        axis.text = element_text(size = 11),
-        legend.text = element_text(size = 10))
+        axis.title = element_text(size = 11,),
+        axis.text = element_text(size = 9),
+        axis.title.x = element_text(margin = margin(7,0,0,0)),
+        axis.title.y = element_text(margin = margin(0,7,0,0)),
+        legend.text = element_text(size = 8))
 
 # Explore effect heterogeneity with clustered model
 forest_cluster <- forest_results[[2]]
@@ -197,11 +199,15 @@ cate_df <- tibble(
 )
 
 # Histogram of CATE
-cate_df |> 
+cate_hist <- cate_df |> 
   ggplot(aes(x = tau_hat)) +
   geom_histogram(bins = 30, color = "#e9ecef", fill = "#69b3a2", alpha = 0.7,) +
-  labs(x = "\n CATE", y = "Frequency\n") +
+  labs(x = "CATE", y = "Frequency") +
   theme_custom 
+
+ggsave(file.path(output_path, "figures/cate_histogram.svg"), cate_hist,
+       width = 7, height = 4, units = "in", dpi = 300
+)
 
 # Violin plot of CATE by interstate
 cate_df |> 
