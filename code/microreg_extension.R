@@ -240,9 +240,6 @@ round(ate_wind_high[1] + ate_wind_low[1], 3) +
   round(qnorm(0.975) * sqrt(ate_wind_high[2] ^2 + ate_wind_low[2] ^ 2), 3)
 
 
-
-
-
 # Visualize partial effect of temperature and wind
 # Create test X from all combinations of 5% quantile values of each variable
 cov <- c("valueTMAX_MIDWAY", "valuePRCP_MIDWAY", "avg_wind_speed")
@@ -299,7 +296,7 @@ ggsave(file.path(output_path, "figures/cate_temp_wind.svg"), temp_wind_cate_plot
        width = 7, height = 4, units = "in", dpi = 300)
 
 
-cate_test_df |> 
+prcp_cate_plot <- cate_test_df |> 
   filter((avg_wind_speed == median(avg_wind_speed)) & 
            (max_temp == unique(cate_test_df$max_temp))) |> 
   mutate(lower = tau_hat - sqrt(var_hat) * qnorm(0.975),
@@ -311,6 +308,8 @@ cate_test_df |>
   labs(x = "Precipitation", y = "CATE") +
   theme_custom
 
+ggsave(file.path(output_path, "figures/cate_prcp.svg"), prcp_cate_plot,
+       width = 7, height = 4, units = "in", dpi = 300)
 
 
 # Violin plot of CATE by interstate
