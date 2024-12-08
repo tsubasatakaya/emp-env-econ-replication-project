@@ -14,6 +14,6 @@ Please locate the original replication package folder in the root directory. And
 1. `create_dateset.py`  
 2. `main.R`
 
-`create_dataset.py` automatically creates a `data` folder in the root directory (if it does not exist) and saves a set of .csv files created from the raw data in the replication package (not included in this repo due to the large data size). The main .csv files used for the analysis are `chicago_citylevel_dataset.csv` and `micro_dataset_original.csv`.  
+`create_dataset.py` automatically creates a `data` folder in the root directory (if it does not exist) and saves a set of preprocessed .csv files created from the raw data in the replication package (not included in this repo due to the large data size). The main .csv files used for the analysis are `chicago_citylevel_dataset.csv` and `micro_dataset_original.csv`.  
 
 `main.R` runs numbered .R scripts sequentially. `00-setup.R` first installs and loads required packages and creates an `output` folder (if it does not exist). `01-summary_statistics.R`, `02-cityregs.R`, and `03-microregs.R` generate replicated tables. `04-microreg_extension.R` executes the extension analysis.
