@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from preprocessing.preprocess import DataPreprocessor
+from code.preprocessing.preprocess import DataPreprocessor
 
 source_path = Path("replication_package")
 input_data_path = source_path/"Raw-Data"
