@@ -1,6 +1,7 @@
 packages <-  c(
   "tidyverse", 
   "ggplot2", 
+  "gridExtra",
   "see",
   "forcats",
   "broom", 
